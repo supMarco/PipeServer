@@ -2,4 +2,4 @@
 
 Basic injectable pipe server w/ client
 
-feel free to contribute! please do it!
+Feel free to contribute! please do it!
