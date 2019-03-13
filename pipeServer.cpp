@@ -9,13 +9,13 @@
 #pragma endregion
 
 #pragma region prototypes
-_declspec(dllexport) void PipeServerStart(); //This is the only function I need to export
+_declspec(dllexport) void pipe_server_start(); //This is the only function I need to export
 BOOL init();
-void toggle_freeze_money();
+void toggle_freeze_money(); //Patch example
 void add_money(DWORD);
 void spawn_in_game_cheat(DWORD);
-void get_player();
-void setupCall(DWORD, DWORD, DWORD);
+void get_player(); //Injection example
+void setup_call(DWORD, DWORD, DWORD);
 bool Compare(const BYTE*, const BYTE*, const char*);
 DWORD Pattern(DWORD, DWORD, BYTE *, const char *);
 #pragma endregion
@@ -38,7 +38,7 @@ BOOL moneyFlag = FALSE;
 
 
 
-_declspec(dllexport) void PipeServerStart()
+_declspec(dllexport) void pipe_server_start()
 {
 	HANDLE hPipe = NULL;
 	char cheatName[STRSIZE] = { 0 };
@@ -101,7 +101,7 @@ BOOL init()
 			{
 				if (VirtualProtect((LPVOID)playerHook, 0x64, PAGE_EXECUTE_READWRITE, &vpTemp)) //As above
 				{
-					setupCall((DWORD)(&get_player), playerHook, 1); //jumping from playerHook to my code "get_player()"
+					setup_call((DWORD)(&get_player), playerHook, 1); //jumping from playerHook to my code in "get_player()"
 					return TRUE;
 				}
 			}
@@ -110,7 +110,7 @@ BOOL init()
 	return FALSE;
 }
 
-void toggle_freeze_money()
+void toggle_freeze_money() //Patch example
 {
 	__asm {
 	  cmp byte ptr [moneyFlag],0
@@ -118,14 +118,14 @@ void toggle_freeze_money()
 	  mov eax, [moneyHook]
 	  test eax,eax
 	  je l_exitFM
-      mov byte ptr [eax], 0xEB //Changes "je" (0x74) to "jmp" (0xEB)
+      mov byte ptr [eax], 0xEB
 	  mov byte ptr [moneyFlag], 1
 	  jmp l_exitFM
 	  l_disable:
 	  mov eax, [moneyHook]
 	  test eax,eax
 	  je l_exitFM
-	  mov byte ptr [eax], 0x74 //Changes "jmp" (0xEB) back to "je" (0x74)
+	  mov byte ptr [eax], 0x74
 	  mov byte ptr [moneyFlag], 0
 	  l_exitFM:
 	}
@@ -160,7 +160,7 @@ void spawn_in_game_cheat(DWORD cheat)
 	return;
 }
 
-void get_player()
+void get_player() //Injection example
 {
 	__asm {
 	    mov [playerBase], ebp
@@ -169,7 +169,7 @@ void get_player()
 	}
 }
 
-void setupCall(DWORD to, DWORD from, DWORD nops)
+void setup_call(DWORD to, DWORD from, DWORD nops)
 {
 	__asm {
 		mov eax, dword ptr [from]
@@ -190,8 +190,7 @@ void setupCall(DWORD to, DWORD from, DWORD nops)
 	}
 }
 
-//AOB Scanning Functions
-
+#pragma region Aobscan
 bool Compare(const BYTE* pData, const BYTE* bMask, const char* szMask)
 {
 	for (; *szMask; ++szMask, ++pData, ++bMask)
@@ -205,3 +204,4 @@ DWORD Pattern(DWORD dwAddress, DWORD dwLen, BYTE *bMask, const char * szMask)
 		if (Compare((BYTE*)(dwAddress + i), bMask, szMask))  return (DWORD)(dwAddress + i);
 	return 0;
 }
+#pragma endregion
