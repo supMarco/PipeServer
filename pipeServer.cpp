@@ -14,18 +14,26 @@ BOOL init();
 void toggle_freeze_money();
 void add_money(DWORD);
 void spawn_in_game_cheat(DWORD);
+void get_player();
+void setupCall(DWORD, DWORD, DWORD);
 bool Compare(const BYTE*, const BYTE*, const char*);
 DWORD Pattern(DWORD, DWORD, BYTE *, const char *);
 #pragma endregion
 
 #pragma region locals
-BOOL initSuccess = FALSE;
-BOOL moneyFlag = FALSE;
+//########[Misc]#########
+DWORD vpTemp = NULL;
+DWORD gameModule = NULL;
+//########[Hooks]########
 DWORD moneyHook = NULL;
-DWORD moneyVal = NULL;
 DWORD playerHook = NULL;
+//######[Variables]######
+DWORD moneyVal = NULL;
 DWORD playerBase = NULL;
 DWORD cheatSelector = NULL;
+//########[Flags]########
+BOOL initSuccess = FALSE;
+BOOL moneyFlag = FALSE;
 #pragma endregion
 
 
@@ -81,44 +89,19 @@ _declspec(dllexport) void PipeServerStart()
 
 BOOL init()
 {
-	DWORD vpTemp = NULL;
-	DWORD GameModule = (DWORD)GetModuleHandleA(EXENAME);
+	gameModule = (DWORD)GetModuleHandleA(EXENAME);
 
-	if (GameModule)
+	if (gameModule)
 	{
-		moneyHook = Pattern(GameModule, 0x7fffffffffff, (BYTE *)"\x74\x03\x89\x6F\x7E", "xxxxx"); //Fetches the Hook location in the target
-		playerHook = Pattern(GameModule, 0x7fffffffffff, (BYTE *)"\x8B\x85\x82\x00\x00\x00", "xxxxxx"); //Fetches the Hook location in the target
+		moneyHook = Pattern(gameModule, 0x7fffffffffff, (BYTE *)"\x74\x03\x89\x6F\x7E", "xxxxx"); //Fetches the Hook location in the target
+		playerHook = Pattern(gameModule, 0x7fffffffffff, (BYTE *)"\x8B\x85\x82\x00\x00\x00", "xxxxxx"); //Fetches the Hook location in the target
 		if (moneyHook && playerHook)
 		{
 			if (VirtualProtect((LPVOID)moneyHook, 0x64, PAGE_EXECUTE_READWRITE, &vpTemp)) //Makes the page that contains the code I want to modify writeable
 			{
 				if (VirtualProtect((LPVOID)playerHook, 0x64, PAGE_EXECUTE_READWRITE, &vpTemp)) //As above
 				{
-					//BASIC CODE INJECTION EXAMPLE//
-
-					if (FALSE) //Creating my own cave lol
-					{
-						//[cave start]
-						__asm {
-						    getPlayer:
-							mov [playerBase],ebp
-							mov eax, dword ptr [ebp+0x82]
-							ret
-						}
-						//[cave end]
-					}
-
-					//[setup jumps start]
-					__asm {
-						mov eax, dword ptr [playerHook]
-						mov byte ptr [eax],0xE8 //0xE8 = call
-						mov ebx, getPlayer //getPlayer = caveAddr
-						sub ebx, dword ptr[playerHook]
-						sub ebx, 5
-						mov[eax+1], ebx //call caveAddr - hookLocation - 5
-						mov byte ptr [eax+1+4], 0x90 //nop
-					}
-					//[setup jumps end]
+					setupCall((DWORD)(&get_player), playerHook, 1); //jumping from playerHook to my code "get_player()"
 					return TRUE;
 				}
 			}
@@ -164,9 +147,8 @@ void add_money(DWORD val)
 
 void spawn_in_game_cheat(DWORD cheat)
 {
-	DWORD gamemodule = (DWORD)GetModuleHandleA(EXENAME);
 	__asm {
-		mov eax, dword ptr [gamemodule]
+		mov eax, dword ptr [gameModule]
 		test eax,eax
 		je l_exitSIGC
 		push dword ptr [cheat]
@@ -176,6 +158,36 @@ void spawn_in_game_cheat(DWORD cheat)
 		l_exitSIGC:
 	}
 	return;
+}
+
+void get_player()
+{
+	__asm {
+	    mov [playerBase], ebp
+	    mov eax, dword ptr [ebp+0x82]
+	    ret
+	}
+}
+
+void setupCall(DWORD to, DWORD from, DWORD nops)
+{
+	__asm {
+		mov eax, dword ptr [from]
+		mov byte ptr [eax], 0xE8
+		mov ebx, [to]
+		sub ebx, dword ptr [from]
+		sub ebx, 5
+		mov [eax+1], ebx
+		add eax, 5
+		xor ecx,ecx
+		l_loopSC:
+		cmp ecx, dword ptr [nops]
+		jae l_exitSC
+		mov byte ptr [eax+ecx], 0x90
+		add ecx, 1
+		jmp l_loopSC
+		l_exitSC:
+	}
 }
 
 //AOB Scanning Functions
