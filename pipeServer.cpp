@@ -97,13 +97,12 @@ BOOL init()
 		playerHook = Pattern(gameModule, 0x7fffffffffff, (BYTE *)"\x8B\x85\x82\x00\x00\x00", "xxxxxx"); //Fetches the Hook location in the target
 		if (moneyHook && playerHook)
 		{
-			if (VirtualProtect((LPVOID)moneyHook, 0x64, PAGE_EXECUTE_READWRITE, &vpTemp)) //Makes the page that contains the code I want to modify writeable
+			BOOL moneyVP = VirtualProtect((LPVOID)moneyHook, 0x64, PAGE_EXECUTE_READWRITE, &vpTemp);
+			BOOL playerVP = VirtualProtect((LPVOID)playerHook, 0x64, PAGE_EXECUTE_READWRITE, &vpTemp);
+			if (moneyVP && playerVP)
 			{
-				if (VirtualProtect((LPVOID)playerHook, 0x64, PAGE_EXECUTE_READWRITE, &vpTemp)) //As above
-				{
 					setup_call((DWORD)(&get_player), playerHook, 1); //jumping from playerHook to my code in "get_player()"
 					return TRUE;
-				}
 			}
 		}
 	}
@@ -115,14 +114,14 @@ void toggle_freeze_money() //Patch example
 	__asm {
 	  cmp byte ptr [moneyFlag],0
 	  jne l_disable
-	  mov eax, [moneyHook]
+	  mov eax, dword ptr [moneyHook]
 	  test eax,eax
 	  je l_exitFM
       mov byte ptr [eax], 0xEB
 	  mov byte ptr [moneyFlag], 1
 	  jmp l_exitFM
 	  l_disable:
-	  mov eax, [moneyHook]
+	  mov eax, dword ptr [moneyHook]
 	  test eax,eax
 	  je l_exitFM
 	  mov byte ptr [eax], 0x74
@@ -152,8 +151,8 @@ void spawn_in_game_cheat(DWORD cheat)
 		test eax,eax
 		je l_exitSIGC
 		push dword ptr [cheat]
-		lea ecx,[eax+0x2CEA10]
-		lea eax,[eax+0xA760]
+		lea ecx, dword ptr [eax+0x2CEA10]
+		lea eax, dword ptr [eax+0xA760]
 		call eax
 		l_exitSIGC:
 	}
@@ -163,7 +162,7 @@ void spawn_in_game_cheat(DWORD cheat)
 void get_player() //Injection example
 {
 	__asm {
-	    mov [playerBase], ebp
+	    mov dword ptr [playerBase], ebp
 	    mov eax, dword ptr [ebp+0x82]
 	    ret
 	}
@@ -174,10 +173,10 @@ void setup_call(DWORD to, DWORD from, DWORD nops)
 	__asm {
 		mov eax, dword ptr [from]
 		mov byte ptr [eax], 0xE8
-		mov ebx, [to]
+		mov ebx, dword ptr [to]
 		sub ebx, dword ptr [from]
 		sub ebx, 5
-		mov [eax+1], ebx
+		mov dword ptr [eax+1], ebx
 		add eax, 5
 		xor ecx,ecx
 		l_loopSC:
