@@ -40,11 +40,6 @@ BOOL moneyFlag = FALSE;
 
 _declspec(dllexport) void pipe_server_start()
 {
-	__asm
-	{
-		mov eax,[esp]
-		mov[eax+6+2], 1; //Flag location {injectSuccess = position + 2}
-	}
 	HANDLE hPipe = NULL;
 	char cheatName[STRSIZE] = { 0 };
 	DWORD bytesWritten = NULL;

@@ -7,10 +7,12 @@
 #include <tlhelp32.h>
 
 #define STRSIZE 256
+#define ALLOCATIONSIZE 4096
 #define EXENAME "DKII.EXE"
 #define DLLNAME "Dll1.dll"
 #define PIPENAME "\\\\.\\pipe\\Test"
 
+BOOL init_ofna(OPENFILENAMEA *, BYTE *);
 BOOL inject_and_start_server(BYTE *, BYTE *);
 HANDLE get_process_handle_by_name(BYTE *);
 void dword_to_aob(DWORD, BYTE *);
@@ -19,78 +21,85 @@ void show_menu_sig();
 
 int main(void)
 {
+	OPENFILENAMEA OFNA = { 0 };
+	//IMAGE_DOS_HEADER test;
 	HANDLE hPipe = NULL;
-	DWORD bytesWritten = NULL;
-	DWORD bytesRead = NULL;
-	BOOL initSuccess = FALSE;
-	BOOL toggle = FALSE;
-	DWORD dwVal = NULL;
-	char buffer[STRSIZE];
+	DWORD bytesWritten = NULL, bytesRead = NULL, dwVal = NULL;
+	BYTE dllPath[STRSIZE] = { 0 }, buffer[STRSIZE], yn = 'N';
+	BOOL initSuccess = FALSE, toggle = FALSE;
 
-	if (inject_and_start_server(DLLNAME, "?pipe_server_start@@YAXXZ"))
+	if (init_ofna(&OFNA, dllPath, STRSIZE))
 	{
-		hPipe = CreateFile(TEXT(PIPENAME), GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL); //Connects to the pipe server
-		if (hPipe != INVALID_HANDLE_VALUE)
+		fprintf(stdout, "~>i got to inject and start the pipe server, do you want me to continue?(Y/N)\n~>");
+		fscanf(stdin, "%c", &yn);
+		if (yn == 'Y') fprintf(stdout, "~>looking for " DLLNAME "'s path...");
+		if (yn == 'Y' && GetOpenFileNameA(&OFNA))
 		{
-			while (TRUE)
+			if (inject_and_start_server(dllPath, "?pipe_server_start@@YAXXZ"))
 			{
-				show_main_menu();
-
-				fscanf(stdin, "%s", buffer); //Gets a "command"
-
-				if (!strcmp(buffer, "exit"))
-					break;
-
-				WriteFile(hPipe, buffer, STRSIZE - 1, &bytesWritten, NULL); //Sends your "command" to the server
-				if (!initSuccess)
+				hPipe = CreateFile(TEXT(PIPENAME), GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL); //Connects to the pipe server
+				if (hPipe != INVALID_HANDLE_VALUE)
 				{
-					if (!strcmp(buffer, "init"))
+					while (TRUE)
 					{
-						fprintf(stdout, "\n\n~>ready to start!\n\n\n");
-						initSuccess = TRUE;
+						show_main_menu();
+
+						fscanf(stdin, "%s", buffer); //Gets a "command"
+
+						if (!strcmp(buffer, "exit"))
+							break;
+
+						WriteFile(hPipe, buffer, STRSIZE - 1, &bytesWritten, NULL); //Sends your "command" to the server
+						if (!initSuccess)
+						{
+							if (!strcmp(buffer, "init"))
+							{
+								fprintf(stdout, "\n\n~>ready to start!\n\n\n");
+								initSuccess = TRUE;
+							}
+						}
+						else
+						{
+							if (!strcmp(buffer, "toggle_freeze_money"))
+							{
+								ReadFile(hPipe, &toggle, sizeof(BOOL), &bytesRead, NULL); //Fetches the current "toggle_freeze_money" state from the server
+								toggle ? fprintf(stdout, "\n\n~>freeze_money ON\n\n\n") : fprintf(stdout, "\n\n~>freeze_money OFF\n\n\n");
+							}
+							else if (!strcmp(buffer, "add_money"))
+							{
+								fprintf(stdout, "~>how many? >");
+								fscanf(stdin, "%d", &dwVal);
+								WriteFile(hPipe, &dwVal, sizeof(DWORD), &bytesWritten, NULL); //Sends the amount to the server
+								fprintf(stdout, "\n\n~>+%d money!\n\n\n", dwVal);
+							}
+							else if (!strcmp(buffer, "spawn_in_game_cheat"))
+							{
+								show_menu_sig();
+								fscanf(stdin, "%d", &dwVal);
+								WriteFile(hPipe, &dwVal, sizeof(DWORD), &bytesWritten, NULL); //Sends the id to the server
+								fprintf(stdout, "\n\n~>cheat %d enabled!\n\n\n", dwVal);
+							}
+						}
 					}
-				}
-				else
-				{
-					if (!strcmp(buffer, "toggle_freeze_money"))
-					{
-						ReadFile(hPipe, &toggle, sizeof(BOOL), &bytesRead, NULL); //Fetches the current "toggle_freeze_money" state from the server
-						toggle ? fprintf(stdout, "\n\n~>freeze_money ON\n\n\n") : fprintf(stdout, "\n\n~>freeze_money OFF\n\n\n");
-					}
-					else if (!strcmp(buffer, "add_money"))
-					{
-						fprintf(stdout, "~>how many? >");
-						fscanf(stdin, "%d", &dwVal);
-						WriteFile(hPipe, &dwVal, sizeof(DWORD), &bytesWritten, NULL); //Sends the amount to the server
-						fprintf(stdout, "\n\n~>+%d money!\n\n\n", dwVal);
-					}
-					else if (!strcmp(buffer, "spawn_in_game_cheat"))
-					{
-						show_menu_sig();
-						fscanf(stdin, "%d", &dwVal);
-						WriteFile(hPipe, &dwVal, sizeof(DWORD), &bytesWritten, NULL); //Sends the id to the server
-						fprintf(stdout, "\n\n~>cheat %d enabled!\n\n\n", dwVal);
-					}
+					CloseHandle(hPipe);
 				}
 			}
-			CloseHandle(hPipe);
 		}
 	}
-	return (0);
+	return 0;
 }
 
 BOOL inject_and_start_server(BYTE * dllname, BYTE * functiontocall)
 {
-	BYTE injectBuffer[4096] = { 0 };
-	BOOL outcome = FALSE, injectSuccess = FALSE;
+	BYTE injectBuffer[ALLOCATIONSIZE] = { 0 };
+	BOOL outcome = FALSE;
 	HANDLE hProcess = get_process_handle_by_name(EXENAME), hThread = NULL;
-	DWORD functionLocation = NULL, injectionLocation = NULL, flagLocation = NULL, bytesRead = NULL, bytesWritten = NULL, dllPathSize = NULL;
-	DWORD pLoadLibrary = NULL, pGetProcAddress = NULL, startaddress = NULL, position = NULL, position2 = NULL, threadExitCode = NULL, tId = NULL;
+	DWORD functionLocation = NULL, injectionLocation = NULL, bytesRead = NULL, bytesWritten = NULL, tId = NULL;
+	DWORD pLoadLibrary = NULL, pGetProcAddress = NULL, startaddress = NULL, position = NULL, position2 = NULL, threadExitCode = NULL;
 
 	if (hProcess)
 	{
-		dllPathSize = strlen(dllname) + 1;
-		if (injectionLocation = VirtualAllocEx(hProcess, NULL, dllPathSize, MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE))
+		if (injectionLocation = VirtualAllocEx(hProcess, NULL, ALLOCATIONSIZE, MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE))
 		{
 			position = injectionLocation;
 
@@ -209,8 +218,6 @@ BOOL inject_and_start_server(BYTE * dllname, BYTE * functiontocall)
 			position++;
 			position2++;
 
-			flagLocation = position + 4; //FLAG
-
 			if (WriteProcessMemory(hProcess, injectionLocation, injectBuffer, position2, &bytesWritten))
 			{
 				if (hThread = CreateRemoteThread(hProcess, NULL, NULL, startaddress, NULL, NULL, tId))
@@ -227,12 +234,8 @@ BOOL inject_and_start_server(BYTE * dllname, BYTE * functiontocall)
 							fprintf(stdout, "\n\n~>failed executing the function of %s.\n\n", dllname);
 							break;
 						default:
-							ReadProcessMemory(hProcess, flagLocation, &injectSuccess, sizeof(BOOL), &bytesRead);
-							if (injectSuccess)
-							{
 								fprintf(stdout, "\n\n~>%s injected.\n\n", dllname);
 								outcome = TRUE;
-							}
 							break;
 						}
 					}
@@ -258,7 +261,11 @@ HANDLE get_process_handle_by_name(BYTE * processname)
 	{
 		do
 		{
-			if (!strcmp(processEntry.szExeFile, processname)) hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, processEntry.th32ProcessID);
+			if (!strcmp(processEntry.szExeFile, processname))
+			{
+				hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, processEntry.th32ProcessID);
+				break;
+			}
 		} while (Process32Next(hSnapshot, &processEntry));
 	}
 	CloseHandle(hSnapshot);
@@ -270,26 +277,41 @@ void dword_to_aob(DWORD dword, BYTE * bytes)
 	*(DWORD *)bytes = dword;
 }
 
+BOOL init_ofna(OPENFILENAMEA * pofna, BYTE * path, DWORD pathsize)
+{
+	if (pofna)
+	{
+		pofna->lStructSize = sizeof(OPENFILENAMEA);
+		pofna->lpstrFile = path;
+		pofna->nMaxFile = pathsize;
+		pofna->lpstrFilter = DLLNAME "\0" DLLNAME "\0\0";
+		pofna->nFilterIndex = 1;
+		pofna->Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
+
+	}
+	return pofna;
+}
+
 void show_main_menu()
 {
-	fprintf(stdout, "current functions\n{\n"
-		"0: init\n"
-		"1: toggle_freeze_money\n"
-		"2: add_money\n"
-		"3: spawn_in_game_cheat\n"
+	fprintf(stdout, "~>current functions\n{\n"
+		"~>0: init\n"
+		"~>1: toggle_freeze_money\n"
+		"~>2: add_money\n"
+		"~>3: spawn_in_game_cheat\n"
         "}\nselect a function {by name eg. init} ~>");
 }
 
 void show_menu_sig()
 {
-	fprintf(stdout, "game cheats\n{\n"
-		"0: show me the money (Get Money)\n"
-		"1: now the rain has gone (Show the Map)\n"
-		"2: feel the power (All Units Level 10)\n"
-		"3: this is my church (Enable All Rooms)\n"
-		"4: fit the best (Enable All Traps and Rooms)\n"
-		"5: i believe its magic (Get All Spells)\n"
-		"6: do not fear the reaper (Win Level)\n"
-		"7: ha ha thisaway ha ha thataway (100K Mana)\n"
+	fprintf(stdout, "~>game cheats\n{\n"
+		"~>0: show me the money (Get Money)\n"
+		"~>1: now the rain has gone (Show the Map)\n"
+		"~>2: feel the power (All Units Level 10)\n"
+		"~>3: this is my church (Enable All Rooms)\n"
+		"~>4: fit the best (Enable All Traps and Rooms)\n"
+		"~>5: i believe its magic (Get All Spells)\n"
+		"~>6: do not fear the reaper (Win Level)\n"
+		"~>7: ha ha thisaway ha ha thataway (100K Mana)\n"
 		"}\nselect a cheat {by id eg. 0 ~>");
 }
