@@ -11,7 +11,7 @@
 #define DLLNAME "Dll1.dll"
 #define PIPENAME "\\\\.\\pipe\\Test"
 
-BOOL inject_dll(BYTE *, BYTE *);
+BOOL inject_and_start_server(BYTE *, BYTE *);
 HANDLE get_process_handle_by_name(BYTE *);
 void dword_to_aob(DWORD, BYTE *);
 void show_main_menu();
@@ -27,7 +27,7 @@ int main(void)
 	DWORD dwVal = NULL;
 	char buffer[STRSIZE];
 
-	if (inject_dll(DLLNAME, "?pipe_server_start@@YAXXZ"))
+	if (inject_and_start_server(DLLNAME, "?pipe_server_start@@YAXXZ"))
 	{
 		hPipe = CreateFile(TEXT(PIPENAME), GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL); //Connects to the pipe server
 		if (hPipe != INVALID_HANDLE_VALUE)
@@ -79,7 +79,7 @@ int main(void)
 	return (0);
 }
 
-BOOL inject_dll(BYTE * dllname, BYTE * functiontocall)
+BOOL inject_and_start_server(BYTE * dllname, BYTE * functiontocall)
 {
 	BYTE injectBuffer[4096] = { 0 };
 	BOOL outcome = FALSE, injectSuccess = FALSE;
