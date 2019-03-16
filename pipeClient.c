@@ -12,6 +12,8 @@
 #define DLLNAME "Dll1.dll"
 #define PIPENAME "\\\\.\\pipe\\Test"
 
+DWORD get_exported_functions(BYTE *, BYTE **);
+DWORD rva_to_file_offset(BYTE *, DWORD);
 BOOL init_ofna(OPENFILENAMEA *, BYTE *);
 BOOL inject_and_start_server(BYTE *, BYTE *);
 HANDLE get_process_handle_by_name(BYTE *);
@@ -21,67 +23,83 @@ void show_menu_sig();
 
 int main(void)
 {
-	OPENFILENAMEA OFNA = { 0 };
-	//IMAGE_DOS_HEADER test;
-	HANDLE hPipe = NULL;
-	DWORD bytesWritten = NULL, bytesRead = NULL, dwVal = NULL;
-	BYTE dllPath[STRSIZE] = { 0 }, buffer[STRSIZE], yn = 'N';
+	OPENFILENAMEA OFNA = { NULL };
+	HANDLE hPipe = NULL, hDll = NULL;
+	DWORD bytesWritten = NULL, bytesRead = NULL, dwVal = NULL, dllSize = NULL, numberOfExportedFunctions = NULL;
+	BYTE dllPath[STRSIZE] = { 0 }, buffer[STRSIZE], yn = 'N', *dllBuffer = NULL, *exportedFunctions[256] = { NULL };
 	BOOL initSuccess = FALSE, toggle = FALSE;
+
 
 	if (init_ofna(&OFNA, dllPath, STRSIZE))
 	{
 		fprintf(stdout, "~>i got to inject and start the pipe server, do you want me to continue?(Y/N)\n~>");
 		fscanf(stdin, "%c", &yn);
-		if (yn == 'Y') fprintf(stdout, "~>looking for " DLLNAME "'s path...");
-		if (yn == 'Y' && GetOpenFileNameA(&OFNA))
+		if (yn == 'Y' || yn == 'y') fprintf(stdout, "\n\n~>looking for " DLLNAME "'s path...");
+		if ((yn == 'Y' || yn == 'y') && GetOpenFileNameA(&OFNA))
 		{
-			if (inject_and_start_server(dllPath, "?pipe_server_start@@YAXXZ"))
+			hDll = CreateFile(dllPath, GENERIC_READ, NULL, NULL, OPEN_EXISTING, NULL, NULL);
+			if (hDll != INVALID_HANDLE_VALUE)
 			{
-				hPipe = CreateFile(TEXT(PIPENAME), GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL); //Connects to the pipe server
-				if (hPipe != INVALID_HANDLE_VALUE)
+				dllSize = GetFileSize(hDll, NULL);
+				dllBuffer = calloc(1, dllSize + 1);
+				ReadFile(hDll, dllBuffer, dllSize, &bytesRead, NULL);
+				numberOfExportedFunctions = get_exported_functions(dllBuffer, exportedFunctions);
+				CloseHandle(hDll);
+				fprintf(stdout, "\n\n[Exported Functions List]");
+				for (int i = 0; i < numberOfExportedFunctions; i++)
 				{
-					while (TRUE)
+					fprintf(stdout, "\n~>%d: %s\n", i, exportedFunctions[i]);
+				}
+				fprintf(stdout, "\n~>select the server starter {by id eg. 0} ~>");
+				fscanf(stdin, "%d", &numberOfExportedFunctions);
+				if (inject_and_start_server(dllPath, exportedFunctions[numberOfExportedFunctions]))
+				{
+					hPipe = CreateFile(TEXT(PIPENAME), GENERIC_READ | GENERIC_WRITE, NULL, NULL, OPEN_EXISTING, NULL, NULL); //Connects to the pipe server
+					if (hPipe != INVALID_HANDLE_VALUE)
 					{
-						show_main_menu();
-
-						fscanf(stdin, "%s", buffer); //Gets a "command"
-
-						if (!strcmp(buffer, "exit"))
-							break;
-
-						WriteFile(hPipe, buffer, STRSIZE - 1, &bytesWritten, NULL); //Sends your "command" to the server
-						if (!initSuccess)
+						while (TRUE)
 						{
-							if (!strcmp(buffer, "init"))
+							show_main_menu();
+
+							fscanf(stdin, "%s", buffer); //Gets a "command"
+
+							if (!strcmp(buffer, "exit"))
+								break;
+
+							WriteFile(hPipe, buffer, STRSIZE - 1, &bytesWritten, NULL); //Sends your "command" to the server
+							if (!initSuccess)
 							{
-								fprintf(stdout, "\n\n~>ready to start!\n\n\n");
-								initSuccess = TRUE;
+								if (!strcmp(buffer, "init"))
+								{
+									fprintf(stdout, "\n\n~>ready to start!\n\n\n");
+									initSuccess = TRUE;
+								}
+							}
+							else
+							{
+								if (!strcmp(buffer, "toggle_freeze_money"))
+								{
+									ReadFile(hPipe, &toggle, sizeof(BOOL), &bytesRead, NULL); //Fetches the current "toggle_freeze_money" state from the server
+									toggle ? fprintf(stdout, "\n\n~>freeze_money ON\n\n\n") : fprintf(stdout, "\n\n~>freeze_money OFF\n\n\n");
+								}
+								else if (!strcmp(buffer, "add_money"))
+								{
+									fprintf(stdout, "~>how many? >");
+									fscanf(stdin, "%d", &dwVal);
+									WriteFile(hPipe, &dwVal, sizeof(DWORD), &bytesWritten, NULL); //Sends the amount to the server
+									fprintf(stdout, "\n\n~>+%d money!\n\n\n", dwVal);
+								}
+								else if (!strcmp(buffer, "spawn_in_game_cheat"))
+								{
+									show_menu_sig();
+									fscanf(stdin, "%d", &dwVal);
+									WriteFile(hPipe, &dwVal, sizeof(DWORD), &bytesWritten, NULL); //Sends the id to the server
+									fprintf(stdout, "\n\n~>cheat %d enabled!\n\n\n", dwVal);
+								}
 							}
 						}
-						else
-						{
-							if (!strcmp(buffer, "toggle_freeze_money"))
-							{
-								ReadFile(hPipe, &toggle, sizeof(BOOL), &bytesRead, NULL); //Fetches the current "toggle_freeze_money" state from the server
-								toggle ? fprintf(stdout, "\n\n~>freeze_money ON\n\n\n") : fprintf(stdout, "\n\n~>freeze_money OFF\n\n\n");
-							}
-							else if (!strcmp(buffer, "add_money"))
-							{
-								fprintf(stdout, "~>how many? >");
-								fscanf(stdin, "%d", &dwVal);
-								WriteFile(hPipe, &dwVal, sizeof(DWORD), &bytesWritten, NULL); //Sends the amount to the server
-								fprintf(stdout, "\n\n~>+%d money!\n\n\n", dwVal);
-							}
-							else if (!strcmp(buffer, "spawn_in_game_cheat"))
-							{
-								show_menu_sig();
-								fscanf(stdin, "%d", &dwVal);
-								WriteFile(hPipe, &dwVal, sizeof(DWORD), &bytesWritten, NULL); //Sends the id to the server
-								fprintf(stdout, "\n\n~>cheat %d enabled!\n\n\n", dwVal);
-							}
-						}
+						CloseHandle(hPipe);
 					}
-					CloseHandle(hPipe);
 				}
 			}
 		}
@@ -292,9 +310,62 @@ BOOL init_ofna(OPENFILENAMEA * pofna, BYTE * path, DWORD pathsize)
 	return pofna;
 }
 
+DWORD get_exported_functions(BYTE * dll, BYTE ** names)
+{
+	IMAGE_DOS_HEADER * idh = dll;
+	DWORD name = NULL;
+	if (idh->e_magic == IMAGE_DOS_SIGNATURE) //Basic check
+	{
+		IMAGE_NT_HEADERS * inh = dll + idh->e_lfanew;
+		if (inh->Signature == IMAGE_NT_SIGNATURE) //Basic check
+		{
+		IMAGE_DATA_DIRECTORY idd = (inh->OptionalHeader).DataDirectory[0]; //Export symbols
+		IMAGE_EXPORT_DIRECTORY * ied = dll + rva_to_file_offset(dll, idd.VirtualAddress);
+
+
+			for (int i = 0; i < ied->NumberOfNames; i++)
+			{
+				name = dll + rva_to_file_offset(dll, (ied->AddressOfNames) + sizeof(DWORD) * i); //Name RVA
+				name = dll + rva_to_file_offset(dll, *(DWORD *)name); //Name
+				names[i] = calloc(1, strlen(name) + 1);
+				strcpy(names[i], name);
+			}
+			return ied->NumberOfNames;
+		}
+	
+	}
+	return -1;
+	
+}
+
+DWORD rva_to_file_offset(BYTE * dll, DWORD rva)
+{
+	IMAGE_DOS_HEADER * idh = dll;
+	DWORD sections = NULL, virtualAddress = NULL, pointerToRawData = NULL;;
+	if (idh->e_magic == IMAGE_DOS_SIGNATURE) //Basic check
+	{
+		IMAGE_NT_HEADERS * inh = dll + idh->e_lfanew;
+		if (inh->Signature == IMAGE_NT_SIGNATURE) //Basic check
+		{
+			IMAGE_SECTION_HEADER * ish = (BYTE *)inh + sizeof(IMAGE_NT_HEADERS);
+			sections = (inh->FileHeader).NumberOfSections;
+	
+			do
+			{
+				virtualAddress = ish->VirtualAddress;
+				pointerToRawData = ish->PointerToRawData;
+				(BYTE *)ish += sizeof(IMAGE_SECTION_HEADER);
+			} while (sections-- && (rva >= ish->VirtualAddress));
+			
+			if (sections) return (rva - virtualAddress + pointerToRawData);
+		}
+	}
+	return -1;
+}
+
 void show_main_menu()
 {
-	fprintf(stdout, "~>current functions\n{\n"
+	fprintf(stdout, "[current functions]\n{\n"
 		"~>0: init\n"
 		"~>1: toggle_freeze_money\n"
 		"~>2: add_money\n"
@@ -304,7 +375,7 @@ void show_main_menu()
 
 void show_menu_sig()
 {
-	fprintf(stdout, "~>game cheats\n{\n"
+	fprintf(stdout, "[game cheats]\n{\n"
 		"~>0: show me the money (Get Money)\n"
 		"~>1: now the rain has gone (Show the Map)\n"
 		"~>2: feel the power (All Units Level 10)\n"
