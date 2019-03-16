@@ -118,14 +118,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\clientTest\funcPE.c" />
-    <ClCompile Include="..\clientTest\main.c" />
-    <ClCompile Include="..\clientTest\misc.c" />
+    <ClCompile Include="funcPE.c" />
+    <ClCompile Include="main.c" />
+    <ClCompile Include="misc.c" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\clientTest\funcPE.h" />
-    <ClInclude Include="..\clientTest\includes.h" />
-    <ClInclude Include="..\clientTest\misc.h" />
+    <ClInclude Include="funcPE.h" />
+    <ClInclude Include="includes.h" />
+    <ClInclude Include="misc.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
