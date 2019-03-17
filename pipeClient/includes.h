@@ -5,4 +5,5 @@
 #include <Windows.h>
 #include <stdio.h>
 #include <tlhelp32.h>
+#include <psapi.h>
 #include "funcPE.h"

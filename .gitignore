@@ -4,3 +4,16 @@
 *.ipch
 pipeClient/.vs/pipeClient/v15/.suo
 pipeServer/.vs/pipeServer/v15/.suo
+*.obj
+*.exe
+*.ilk
+*.log
+*.pdb
+*.tlog
+*.idb
+*.dll
+*.exp
+*.iobj
+*.ipdb
+*.lib
+*.pch

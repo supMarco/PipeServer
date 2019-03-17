@@ -1,6 +1,21 @@
 #pragma once
 #include "includes.h"
 
+WORD get_machine_type(BYTE * exe)
+{
+	IMAGE_DOS_HEADER * idh = exe;
+	if (idh->e_magic == IMAGE_DOS_SIGNATURE) //Basic check
+	{
+		IMAGE_NT_HEADERS * inh = exe + idh->e_lfanew;
+		if (inh->Signature == IMAGE_NT_SIGNATURE) //Basic check
+		{
+			IMAGE_OPTIONAL_HEADER ioh = inh->OptionalHeader;
+			return ioh.Magic; //IMAGE_NT_OPTIONAL_HDR32_MAGIC / IMAGE_NT_OPTIONAL_HDR64_MAGIC
+		}
+	}
+	return -1;
+}
+
 DWORD get_exported_functions(BYTE * dll, BYTE ** names)
 {
 	IMAGE_DOS_HEADER * idh = dll;

@@ -11,16 +11,25 @@ void show_main_menu();
 
 BOOL initSuccess = FALSE;
 DWORD serverLocation = FALSE;
+DWORD bytesWritten = NULL;
+DWORD bytesRead = NULL;
 
 int main(void)
 {
 	OPENFILENAMEA OFNA = { NULL };
-	HANDLE hPipe = NULL, hDll = NULL;
-	DWORD bytesWritten = NULL, bytesRead = NULL, dwVal = NULL, dllSize = NULL, numberOfExportedFunctions = NULL;
-	BYTE dllPath[STR_SIZE] = { 0 }, buffer[STR_SIZE], yn = 'N', *dllBuffer = NULL, *exportedFunctions[STR_SIZE] = { NULL }, exeName[STR_SIZE] = { 0 };
+	HANDLE hPipe = NULL;
+	HANDLE hDll = NULL;
+	DWORD dwVal = NULL;
+	DWORD numberOfExportedFunctions = NULL;
+	BYTE dllPath[STR_SIZE] = { 0 };
+	BYTE buffer[STR_SIZE];
+	BYTE yn = 'N';
+	BYTE *dllBuffer = NULL;
+	BYTE *exportedFunctions[STR_SIZE] = { NULL };
+	BYTE exeName[STR_SIZE] = { 0 };
 
 
-	if (init_ofna_dll(&OFNA, dllPath, STR_SIZE))
+	if (init_ofna_dll(&OFNA, dllPath, sizeof(dllPath)))
 	{
 		fprintf(stdout, "~>`injecting and starting the pipe server, do you want me to continue`?(Y/N)\n~>");
 		fscanf(stdin, "%c", &yn);
@@ -30,9 +39,8 @@ int main(void)
 			hDll = CreateFile(dllPath, GENERIC_READ, NULL, NULL, OPEN_EXISTING, NULL, NULL);
 			if (hDll != INVALID_HANDLE_VALUE)
 			{
-				dllSize = GetFileSize(hDll, NULL);
-				dllBuffer = calloc(1, dllSize + 1);
-				ReadFile(hDll, dllBuffer, dllSize, &bytesRead, NULL);
+				dllBuffer = calloc(1, GetFileSize(hDll, NULL) + 1);
+				ReadFile(hDll, dllBuffer, GetFileSize(hDll, NULL), &bytesRead, NULL);
 				numberOfExportedFunctions = get_exported_functions(dllBuffer, exportedFunctions);
 				CloseHandle(hDll);
 				fprintf(stdout, "\n\n[`Exported Functions List`]");
@@ -92,151 +100,174 @@ int main(void)
 BOOL inject_and_start_server(BYTE * exename, BYTE * dllname, BYTE * functiontocall)
 {
 	BYTE injectBuffer[DEFAULT_ALLOCATION_SIZE] = { 0 };
+	BYTE exePath[STR_SIZE] = { 0 };
+	BYTE * exeBuffer = NULL;
+	WORD machineType = NULL;
 	BOOL outcome = FALSE;
-	HANDLE hProcess = get_process_handle_by_name(exename), hThread = NULL;
-	DWORD functionLocation = NULL, injectionLocation = NULL, bytesRead = NULL, bytesWritten = NULL, tId = NULL;
-	DWORD pLoadLibrary = NULL, pGetProcAddress = NULL, startaddress = NULL, position = NULL, position2 = NULL, threadExitCode = NULL;
+	HANDLE hProcess = get_process_handle_by_name(exename);
+	HANDLE hThread = NULL;
+	HANDLE hExe = NULL;
+	DWORD functionLocation = NULL;
+	DWORD injectionLocation = NULL;
+	DWORD tId = NULL;
+	DWORD pLoadLibrary = NULL;
+	DWORD pGetProcAddress = NULL;
+	DWORD startaddress = NULL;
+	DWORD position = NULL;
+	DWORD position2 = NULL;
+	DWORD threadExitCode = NULL;
 
 	if (hProcess)
 	{
-		if (injectionLocation = VirtualAllocEx(hProcess, NULL, DEFAULT_ALLOCATION_SIZE, MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE))
+		if (GetModuleFileNameEx(hProcess, NULL, exePath, sizeof(exePath) - 1)) //Getting exe path
 		{
-			position = injectionLocation;
-
-			memcpy(injectBuffer, dllname, strlen(dllname) + 1);
-			position += strlen(dllname) + 1;
-			position2 += strlen(dllname) + 1;
-
-			functionLocation = position;
-
-			memcpy(injectBuffer+position2, functiontocall, strlen(functiontocall) + 1);
-			position += strlen(functiontocall) + 1;
-			position2 += strlen(functiontocall) + 1;
-
-			startaddress = position;
-			
-			injectBuffer[position2] = 0x68; //PUSH
-			position++;
-			position2++;
-
-			dword_to_aob(injectionLocation, injectBuffer + position2); //imm32
-			position += 4;
-			position2 += 4;
-
-			injectBuffer[position2] = 0xE8; //CALL
-			position++;
-			position2++;
-
-			pLoadLibrary = GetProcAddress(GetModuleHandle("kernel32"), "LoadLibraryA");
-			dword_to_aob(pLoadLibrary - (position - 1) - 5, injectBuffer + position2); //rel32
-			position += 4;
-			position2 += 4;
-
-			dword_to_aob(0xC085, injectBuffer + position2); //TEST EAX,EAX
-			position += 2;
-			position2 += 2;
-
-			injectBuffer[position2] = 0x75; //JNZ 
-			position++;
-			position2++;
-
-			dword_to_aob(((position - 1) + 3 + 5) - (position - 1) - 2, injectBuffer + position2); //rel8
-			position++;
-			position2++;
-
-			injectBuffer[position2] = 0xB8; //MOV r32
-			position++;
-			position2++;
-
-			injectBuffer[position2] = 0x02; //imm32
-			position += 4;
-			position2 += 4;
-
-			injectBuffer[position2] = 0xC3; //RET
-			position++;
-			position2++;
-
-			injectBuffer[position2] = 0x68; //PUSH
-			position++;
-			position2++;
-
-			dword_to_aob(functionLocation, injectBuffer + position2); //imm32
-			position += 4;
-			position2 += 4;
-
-			injectBuffer[position2] = 0x50; //PUSH EAX
-			position++;
-			position2++;
-
-			injectBuffer[position2] = 0xE8; //CALL
-			position++;
-			position2++;
-
-			pGetProcAddress = GetProcAddress(GetModuleHandle("kernel32"), "GetProcAddress");
-			dword_to_aob(pGetProcAddress - (position - 1) - 5, injectBuffer + position2); //rel32
-			position += 4;
-			position2 += 4;
-
-			dword_to_aob(0xC085, injectBuffer + position2); //TEST EAX,EAX
-			position += 2;
-			position2 += 2;
-
-			injectBuffer[position2] = 0x75; //JNZ 
-			position++;
-			position2++;
-
-			dword_to_aob(((position - 1) + 3 + 5) - (position - 1) - 2, injectBuffer + position2); //rel8
-			position++;
-			position2++;
-
-
-			injectBuffer[position2] = 0xB8; //MOV r32
-			position++;
-			position2++;
-
-			injectBuffer[position2] = 0x03; //imm32
-			position += 4;
-			position2 += 4;
-
-			injectBuffer[position2] = 0xC3; //RET
-			position++;
-			position2++;
-
-			dword_to_aob(0xD0FF, injectBuffer + position2); //CALL EAX
-			position += 2;
-			position2 += 2;
-
-			injectBuffer[position2] = 0xB8; //MOV r32
-			position++;
-			position2++;
-
-			injectBuffer[position2] = 0x01; //imm32
-			position += 4;
-			position2 += 4;
-
-			injectBuffer[position2] = 0xC3; //RET
-			position++;
-			position2++;
-
-			if (WriteProcessMemory(hProcess, injectionLocation, injectBuffer, position2, &bytesWritten))
+			hExe = CreateFile(exePath, GENERIC_READ, NULL, NULL, OPEN_EXISTING, NULL, NULL); //Opening the exe
+			if (hExe != INVALID_HANDLE_VALUE)
 			{
-				if (hThread = CreateRemoteThread(hProcess, NULL, NULL, startaddress, NULL, NULL, tId))
+				exeBuffer = calloc(1, GetFileSize(hExe, NULL) + 1);
+				ReadFile(hExe, exeBuffer, GetFileSize(hExe, NULL), &bytesRead, NULL);
+				machineType = get_machine_type(exeBuffer); //I'll use this later on
+
+				if (injectionLocation = VirtualAllocEx(hProcess, NULL, DEFAULT_ALLOCATION_SIZE, MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE))
 				{
-					Sleep(100);
-					if (GetExitCodeThread(hThread, &threadExitCode))
+					position = injectionLocation;
+
+					memcpy(injectBuffer, dllname, strlen(dllname) + 1);
+					position += strlen(dllname) + 1;
+					position2 += strlen(dllname) + 1;
+
+					functionLocation = position;
+
+					memcpy(injectBuffer + position2, functiontocall, strlen(functiontocall) + 1);
+					position += strlen(functiontocall) + 1;
+					position2 += strlen(functiontocall) + 1;
+
+					startaddress = position;
+
+					injectBuffer[position2] = 0x68; //PUSH
+					position++;
+					position2++;
+
+					dword_to_aob(injectionLocation, injectBuffer + position2); //imm32
+					position += 4;
+					position2 += 4;
+
+					injectBuffer[position2] = 0xE8; //CALL
+					position++;
+					position2++;
+
+					pLoadLibrary = GetProcAddress(GetModuleHandle("kernel32"), "LoadLibraryA");
+					dword_to_aob(pLoadLibrary - (position - 1) - 5, injectBuffer + position2); //rel32
+					position += 4;
+					position2 += 4;
+
+					dword_to_aob(0xC085, injectBuffer + position2); //TEST EAX,EAX
+					position += 2;
+					position2 += 2;
+
+					injectBuffer[position2] = 0x75; //JNZ 
+					position++;
+					position2++;
+
+					dword_to_aob(((position - 1) + 3 + 5) - (position - 1) - 2, injectBuffer + position2); //rel8
+					position++;
+					position2++;
+
+					injectBuffer[position2] = 0xB8; //MOV r32
+					position++;
+					position2++;
+
+					injectBuffer[position2] = 0x02; //imm32
+					position += 4;
+					position2 += 4;
+
+					injectBuffer[position2] = 0xC3; //RET
+					position++;
+					position2++;
+
+					injectBuffer[position2] = 0x68; //PUSH
+					position++;
+					position2++;
+
+					dword_to_aob(functionLocation, injectBuffer + position2); //imm32
+					position += 4;
+					position2 += 4;
+
+					injectBuffer[position2] = 0x50; //PUSH EAX
+					position++;
+					position2++;
+
+					injectBuffer[position2] = 0xE8; //CALL
+					position++;
+					position2++;
+
+					pGetProcAddress = GetProcAddress(GetModuleHandle("kernel32"), "GetProcAddress");
+					dword_to_aob(pGetProcAddress - (position - 1) - 5, injectBuffer + position2); //rel32
+					position += 4;
+					position2 += 4;
+
+					dword_to_aob(0xC085, injectBuffer + position2); //TEST EAX,EAX
+					position += 2;
+					position2 += 2;
+
+					injectBuffer[position2] = 0x75; //JNZ 
+					position++;
+					position2++;
+
+					dword_to_aob(((position - 1) + 3 + 5) - (position - 1) - 2, injectBuffer + position2); //rel8
+					position++;
+					position2++;
+
+
+					injectBuffer[position2] = 0xB8; //MOV r32
+					position++;
+					position2++;
+
+					injectBuffer[position2] = 0x03; //imm32
+					position += 4;
+					position2 += 4;
+
+					injectBuffer[position2] = 0xC3; //RET
+					position++;
+					position2++;
+
+					dword_to_aob(0xD0FF, injectBuffer + position2); //CALL EAX
+					position += 2;
+					position2 += 2;
+
+					injectBuffer[position2] = 0xB8; //MOV r32
+					position++;
+					position2++;
+
+					injectBuffer[position2] = 0x01; //imm32
+					position += 4;
+					position2 += 4;
+
+					injectBuffer[position2] = 0xC3; //RET
+					position++;
+					position2++;
+
+					if (WriteProcessMemory(hProcess, injectionLocation, injectBuffer, position2, &bytesWritten))
 					{
-						switch (threadExitCode)
+						if (hThread = CreateRemoteThread(hProcess, NULL, NULL, startaddress, NULL, NULL, tId))
 						{
-						case 2:
-							fprintf(stdout, "\n\n~>`failed injecting %s`.\n\n", dllname);
-							break;
-						case 3:
-							fprintf(stdout, "\n\n~>`failed executing the function of %s`.\n\n", dllname);
-							break;
-						default:
-								fprintf(stdout, "\n\n~>`%s injected`.\n\n", dllname);
-								outcome = TRUE;
-							break;
+							Sleep(100);
+							if (GetExitCodeThread(hThread, &threadExitCode))
+							{
+								switch (threadExitCode)
+								{
+								case 2:
+									fprintf(stdout, "\n\n~>`failed injecting %s`.\n\n", dllname);
+									break;
+								case 3:
+									fprintf(stdout, "\n\n~>`failed executing the function of %s`.\n\n", dllname);
+									break;
+								default:
+									fprintf(stdout, "\n\n~>`%s injected`.\n\n", dllname);
+									outcome = TRUE;
+									break;
+								}
+							}
 						}
 					}
 				}
