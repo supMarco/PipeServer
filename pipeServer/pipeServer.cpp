@@ -10,13 +10,14 @@ void pipe_message_box(BYTE *);
 BOOL initSuccess = FALSE;
 HANDLE hPipe = NULL;
 BYTE * inputBuffer;
-const char * captionMBA = "pipe_message_box Example";
 DWORD bytesWritten = NULL;
 DWORD bytesRead = NULL;
-DWORD * pMessageBoxA = NULL;
+#ifdef BUILD64
+DWORD64 serverLocation = NULL;
+#else
 DWORD serverLocation = NULL;
-
-
+#endif
+const char * captionMBA = "pipe_message_box Example";
 
 _declspec(dllexport) void pipe_server_start()
 {
@@ -38,8 +39,14 @@ _declspec(dllexport) void pipe_server_start()
 					if (!strcmp((const char *)inputBuffer, "init"))
 					{
 						initSuccess = init();
+#ifdef BUILD64
+						serverLocation = (DWORD64)(&pipe_server_start);
+						WriteFile(hPipe, &serverLocation, sizeof(DWORD64), &bytesWritten, NULL); //Sends info to the server (server location in the target)
+#else
 						serverLocation = (DWORD)(&pipe_server_start);
 						WriteFile(hPipe, &serverLocation, sizeof(DWORD), &bytesWritten, NULL); //Sends info to the server (server location in the target)
+#endif
+						
 					}
 				}
 				else
@@ -59,17 +66,10 @@ _declspec(dllexport) void pipe_server_start()
 
 BOOL init()
 {
-	(pMessageBoxA = (DWORD*)GetProcAddress(GetModuleHandle(TEXT("USER32")), "MessageBoxA")) ? initSuccess = TRUE : initSuccess = FALSE;
-	return initSuccess;
+	return TRUE;
 }
 
 void pipe_message_box(BYTE * message)
 {
-	__asm {
-		push 0
-		push captionMBA
-		push message
-		push 0
-		call dword ptr[pMessageBoxA];
-	}
+	MessageBoxA(NULL, (LPCSTR)message, "test", NULL);
 }
