@@ -37,3 +37,17 @@ HANDLE get_process_handle_by_name(BYTE * processname)
 	CloseHandle(hSnapshot);
 	return hProcess;
 }
+
+
+BOOL load_file(BYTE * filepath, BYTE ** buffer)
+{
+	DWORD bytesRead = NULL;
+	HANDLE hFile = CreateFile(filepath, GENERIC_READ, NULL, NULL, OPEN_EXISTING, NULL, NULL);
+	if (hFile != INVALID_HANDLE_VALUE)
+	{
+		*buffer = calloc(1, GetFileSize(hFile, NULL) + 1);
+		ReadFile(hFile, *buffer, GetFileSize(hFile, NULL), &bytesRead, NULL);
+		CloseHandle(hFile);
+	}
+	return bytesRead;
+}

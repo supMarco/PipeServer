@@ -4,6 +4,7 @@
 #define DEFAULT_ALLOCATION_SIZE 4096
 #define DLL_NAME "pipeServer.dll"
 #define PIPE_NAME "\\\\.\\pipe\\pipeServer"
+#define PIPE_SERVER_STARTER "pipe_server_start"
 
 BOOL inject_and_start_server(BYTE *, BYTE *, BYTE *);
 
@@ -59,13 +60,9 @@ int main(void)
 		if (yn == 'Y' || yn == 'y') fprintf(stdout, "\nlooking for " DLL_NAME "'s path...");
 		if ((yn == 'Y' || yn == 'y') && GetOpenFileNameA(&OFNA))
 		{
-			hDll = CreateFile(dllPath, GENERIC_READ, NULL, NULL, OPEN_EXISTING, NULL, NULL);
-			if (hDll != INVALID_HANDLE_VALUE)
+			if (load_file(dllPath, &dllBuffer))
 			{
-				dllBuffer = calloc(1, GetFileSize(hDll, NULL) + 1);
-				ReadFile(hDll, dllBuffer, GetFileSize(hDll, NULL), &bytesRead, NULL);
 				dllMachineType = get_machine_type(dllBuffer);
-				CloseHandle(hDll);
 
 				fprintf(stdout, "\nexe name? ~>");
 				fscanf(stdin, "%s", exeName);
@@ -74,30 +71,22 @@ int main(void)
 				{ 
 					if (GetModuleFileNameEx(hProcess, NULL, exePath, sizeof(exePath) - 1))
 					{
-						hExe = CreateFile(exePath, GENERIC_READ, NULL, NULL, OPEN_EXISTING, NULL, NULL);
-						if (hExe != INVALID_HANDLE_VALUE)
+						if (load_file(exePath, &exeBuffer))
 						{
-							exeBuffer = calloc(1, GetFileSize(hExe, NULL) + 1);
-							ReadFile(hExe, exeBuffer, GetFileSize(hExe, NULL), &bytesRead, NULL);
 							exeMachineType = get_machine_type(exeBuffer);
-							CloseHandle(hExe);
 
 							if (exeMachineType == dllMachineType)
 							{
 								numberOfExportedFunctions = get_exported_functions_x64_x86(dllBuffer, exportedFunctions, dllMachineType);
-								fprintf(stdout, "\n[`Exported DLL Functions List`]");
-								for (int i = 0; i < numberOfExportedFunctions; i++)
-								{
-									fprintf(stdout, "\n```%d: %s```\n", i, exportedFunctions[i]);
-								}
-								fprintf(stdout, "\n\nselect the server starter {by id eg. 0} ~>");
-								fscanf(stdin, "%d", &numberOfExportedFunctions);
+								for (int i = 0; i < numberOfExportedFunctions && exportedFunctions[i]; i++)
+									if (strstr(exportedFunctions[i], PIPE_SERVER_STARTER)) numberOfExportedFunctions = i;
+
 								if (inject_and_start_server(exeName, dllPath, exportedFunctions[numberOfExportedFunctions]))
 								{
 									hPipe = CreateFile(TEXT(PIPE_NAME), GENERIC_READ | GENERIC_WRITE, NULL, NULL, OPEN_EXISTING, NULL, NULL); //Connects to the pipe server
 									if (hPipe != INVALID_HANDLE_VALUE)
 									{
-										while (TRUE)
+										while (TRUE) //Server Loop
 										{
 											show_main_menu();
 

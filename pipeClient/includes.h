@@ -9,3 +9,4 @@
 #include <tlhelp32.h>
 #include <psapi.h>
 #include "funcPE.h"
+#include "misc.h"

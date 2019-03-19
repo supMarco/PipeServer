@@ -3,3 +3,4 @@
 
 BOOL init_ofna_dll(OPENFILENAMEA *, BYTE *);
 HANDLE get_process_handle_by_name(BYTE *);
+BOOL load_file(BYTE *, BYTE **);
