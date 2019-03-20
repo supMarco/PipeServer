@@ -3,9 +3,9 @@
 #define STR_SIZE 256
 #define PIPE_NAME "\\\\.\\pipe\\pipeServer"
 
-_declspec(dllexport) void pipe_server_start(); //This is the only function I need to export
-BOOL init();
-void pipe_message_box(BYTE *);
+_declspec(dllexport) void pipe_server_start();
+_declspec(dllexport) BOOL init();
+_declspec(dllexport) void pipe_message_box(BYTE *);
 
 BOOL initSuccess = FALSE;
 HANDLE hPipe = NULL;
@@ -36,7 +36,7 @@ _declspec(dllexport) void pipe_server_start()
 				if (!initSuccess) //init() has to be called first, and just once!
 				{
 
-					if (!strcmp((const char *)inputBuffer, "init"))
+					if (strstr((const char *)inputBuffer, "init"))
 					{
 						initSuccess = init();
 #ifdef BUILD64
@@ -51,7 +51,7 @@ _declspec(dllexport) void pipe_server_start()
 				}
 				else
 				{
-					if (!strcmp((const char *)inputBuffer, "pipe_message_box")) //Fetch the message to spawn from the client
+					if (strstr((const char *)inputBuffer, "pipe_message_box")) //Fetch the message to spawn from the client
 					{
 						ReadFile(hPipe, inputBuffer, STR_SIZE - 1, &bytesRead, NULL);
 						pipe_message_box(inputBuffer);
@@ -72,4 +72,9 @@ BOOL init()
 void pipe_message_box(BYTE * message)
 {
 	MessageBoxA(NULL, (LPCSTR)message, "test", NULL);
+}
+
+BOOL inject_dll(BYTE * dllpath)
+{
+	return (BOOL)LoadLibraryA((LPCSTR)dllpath);
 }

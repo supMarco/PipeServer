@@ -1,20 +1,6 @@
 #pragma once
 #include "includes.h"
 
-BOOL init_ofna_dll(OPENFILENAMEA * pofna, BYTE * path, DWORD pathsize)
-{
-	if (pofna)
-	{
-		pofna->lStructSize = sizeof(OPENFILENAMEA);
-		pofna->lpstrFile = path;
-		pofna->nMaxFile = pathsize;
-		pofna->lpstrFilter = "DLL Files\0*.DLL\0\0";
-		pofna->nFilterIndex = 1;
-		pofna->Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
-
-	}
-	return pofna;
-}
 
 HANDLE get_process_handle_by_name(BYTE * processname)
 {
@@ -38,16 +24,28 @@ HANDLE get_process_handle_by_name(BYTE * processname)
 	return hProcess;
 }
 
-
 BOOL load_file(BYTE * filepath, BYTE ** buffer)
 {
 	DWORD bytesRead = NULL;
 	HANDLE hFile = CreateFile(filepath, GENERIC_READ, NULL, NULL, OPEN_EXISTING, NULL, NULL);
 	if (hFile != INVALID_HANDLE_VALUE)
 	{
-		*buffer = calloc(1, GetFileSize(hFile, NULL) + 1);
+		*buffer = (BYTE *)calloc(1, GetFileSize(hFile, NULL) + 1);
 		ReadFile(hFile, *buffer, GetFileSize(hFile, NULL), &bytesRead, NULL);
 		CloseHandle(hFile);
 	}
 	return bytesRead;
+
+}
+
+#ifdef BUILD64
+void dword_to_aob_64(DWORD64 dword, BYTE * bytes)
+{
+	*(DWORD64 *)bytes = dword;
+}
+#endif
+
+void dword_to_aob_32(DWORD dword, BYTE * bytes)
+{
+	*(DWORD *)bytes = dword;
 }
