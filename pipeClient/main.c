@@ -1,5 +1,5 @@
 #include "includes.h"
-
+#pragma comment(linker,"/manifestdependency:\"type='win32' name='Microsoft.Windows.Common-Controls' " "version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 
 LRESULT CALLBACK WindowProc(HWND, UINT, WPARAM, LPARAM);
 
@@ -200,7 +200,7 @@ void on_button02_click()
 			WriteFile(hPipe, selFunction, STR_SIZE - 1, (LPDWORD)&bytesWritten, NULL);
 			ReadFile(hPipe, &serverLocation, sizeof(DWORD64), (LPDWORD)&bytesRead, NULL); //Fetch info from the server (server location in the target)
 			//Grabbing exe info from the server
-			_ultoa(serverLocation, serverLocationStr, 16);
+			_i64toa(serverLocation, serverLocationStr, 16);
 			_strupr(serverLocationStr);
 			if (exeMachine == IMAGE_NT_OPTIONAL_HDR64_MAGIC) SetWindowText(hwndStaticMain04, "PE64");
 			else SetWindowText(hwndStaticMain04, "PE32");
