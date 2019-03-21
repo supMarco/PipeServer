@@ -8,7 +8,7 @@ void on_button02_click();
 void on_button03_click();
 void on_button04_click();
 void on_button05_click();
-
+void on_button06_click();
 
 HWND hwndMain = NULL;
 HWND hwndStaticMain01 = NULL;
@@ -22,6 +22,7 @@ HWND hwndButtonMain02 = NULL;
 HWND hwndButtonMain03 = NULL;
 HWND hwndButtonMain04 = NULL;
 HWND hwndButtonMain05 = NULL;
+HWND hwndButtonMain06 = NULL;
 HWND hwndEditMain01 = NULL;
 HWND hwndEditMain02 = NULL;
 HWND hwndEditMain03 = NULL;
@@ -114,6 +115,9 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		case ID_BUTTON05_MAIN:
 			on_button05_click();
 			return 0;
+		case ID_BUTTON06_MAIN:
+			on_button06_click();
+			return 0;
 		}
 		return 0;
 	}
@@ -124,11 +128,12 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 void on_window_create(HWND hwnd)
 {
-	hwndButtonMain01 = CreateWindow("Button", "Inject and connect", WS_CHILD | WS_VISIBLE, 10, 10, 150, 60, hwnd, (HMENU)ID_BUTTON01_MAIN, NULL, NULL);
+	hwndButtonMain01 = CreateWindow("Button", "Inject and connect", WS_CHILD | WS_VISIBLE, 10, 10, 150, 25, hwnd, (HMENU)ID_BUTTON01_MAIN, NULL, NULL);
 	hwndButtonMain02 = CreateWindow("Button", "Call function", WS_CHILD | WS_VISIBLE, 10, 300, 280, 25, hwnd, (HMENU)ID_BUTTON02_MAIN, NULL, NULL);
 	hwndButtonMain03 = CreateWindow("Button", "...", WS_CHILD | WS_VISIBLE, 645, 10, 30, 25, hwnd, (HMENU)ID_BUTTON03_MAIN, NULL, NULL);
 	hwndButtonMain04 = CreateWindow("Button", "Scan for codecaves", WS_CHILD | WS_VISIBLE, 485, 300, 190, 25, hwnd, (HMENU)ID_BUTTON04_MAIN, NULL, NULL);
 	hwndButtonMain05 = CreateWindow("Button", "Stop", WS_CHILD | WS_VISIBLE, 395, 300, 80, 25, hwnd, (HMENU)ID_BUTTON05_MAIN, NULL, NULL);
+	hwndButtonMain06 = CreateWindow("Button", "Attach to", WS_CHILD | WS_VISIBLE, 10, 45, 150, 25, hwnd, (HMENU)ID_BUTTON06_MAIN, NULL, NULL);
 	hwndStaticMain01 = CreateWindow("Static", "Functions exported by pipeServer.dll", WS_CHILD | WS_VISIBLE | SS_LEFT, 15, 90, 300, 20, hwnd, (HMENU)ID_LABEL01_MAIN, NULL, NULL);
 	hwndStaticMain02 = CreateWindow("Static", "Machine:", WS_CHILD | WS_VISIBLE | SS_LEFT, 320, 50, 300, 20, hwnd, (HMENU)ID_LABEL02_MAIN, NULL, NULL);
 	hwndStaticMain04 = CreateWindow("Static", "?", WS_CHILD | WS_VISIBLE | SS_LEFT, 390, 50, 35, 20, hwnd, (HMENU)ID_LABEL04_MAIN, NULL, NULL);
@@ -161,18 +166,14 @@ void on_button01_click()
 	BYTE * dllBuffer = NULL;
 	BYTE * exeBuffer = NULL;
 
+	if (!(hProcess = get_process_handle_by_name(exeName)))
+		return;
+
 	if (!load_file(dllPath, &dllBuffer))
 		return;
 
 	dllMachine = get_machine_type(dllBuffer);
 
-	GetWindowText(hwndEditMain02, (LPSTR)exeName, sizeof(exeName) - 1);
-
-	if (!(hProcess = get_process_handle_by_name(exeName)))
-	{
-		free(dllBuffer);
-		return;
-	}
 
 	if (!GetModuleFileNameEx(hProcess, NULL, exePath, sizeof(exePath) - 1))
 	{
@@ -310,6 +311,22 @@ void on_button05_click()
 	{
 		stopscan = TRUE;
 		EnableWindow(hwndButtonMain05, FALSE);
+	}
+}
+
+void on_button06_click()
+{
+	GetWindowText(hwndEditMain02, (LPSTR)exeName, sizeof(exeName) - 1);
+
+	if (hProcess)
+	{
+		MessageBox(hwndMain, "Already attached", "Error", MB_ICONINFORMATION | MB_OK);
+		return;
+	}
+	if (!(hProcess = get_process_handle_by_name(exeName)))
+	{
+		MessageBox(hwndMain, "Unable to attach", "Error", MB_ICONERROR | MB_OK);
+		return;
 	}
 }
 
