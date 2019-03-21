@@ -50,7 +50,7 @@ void dword_to_aob_32(DWORD dword, BYTE * bytes)
 	*(DWORD *)bytes = dword;
 }
 
-void code_cave_scanner(HANDLE hProcess, DWORD64 startaddress, DWORD64 stopaddress, DWORD64 size, BOOL includeReadOnlyNonExecutable, HWND listbox)
+void code_cave_scanner(HANDLE hProcess, DWORD64 startaddress, DWORD64 stopaddress, DWORD64 size, BOOL includeReadOnlyNonExecutable, HWND listbox, HWND percentage)
 {
 	MEMORY_BASIC_INFORMATION memory_basic_information = { NULL };
 	DWORD64 current = NULL;
@@ -59,7 +59,7 @@ void code_cave_scanner(HANDLE hProcess, DWORD64 startaddress, DWORD64 stopaddres
 	BYTE currentbyte = NULL;
 	BYTE *buffer = NULL;
 	BYTE found[8*2+1] = { 0 };
-	BOOL validRegion = FALSE;
+	BOOL validregion = FALSE;
 
 	SendMessage(listbox, LB_RESETCONTENT, NULL, NULL);
 
@@ -67,20 +67,21 @@ void code_cave_scanner(HANDLE hProcess, DWORD64 startaddress, DWORD64 stopaddres
 	
 	while (current < stopaddress)
 	{
+		update_progress(percentage, current);
 		VirtualQueryEx(hProcess, current, &memory_basic_information, sizeof(memory_basic_information));
 
 		switch (includeReadOnlyNonExecutable)
 		{
 		case TRUE:
-			validRegion = ((memory_basic_information.AllocationProtect && (PAGE_EXECUTE || PAGE_EXECUTE_READ || PAGE_EXECUTE_READWRITE || PAGE_READONLY || PAGE_EXECUTE_WRITECOPY)));
+			validregion = ((memory_basic_information.AllocationProtect && (PAGE_EXECUTE || PAGE_EXECUTE_READ || PAGE_EXECUTE_READWRITE || PAGE_READONLY || PAGE_EXECUTE_WRITECOPY)));
 			break;
 
 		case FALSE:
-			validRegion = ((memory_basic_information.AllocationProtect && (PAGE_EXECUTE || PAGE_EXECUTE_READ || PAGE_EXECUTE_READWRITE || PAGE_EXECUTE_WRITECOPY)));
+			validregion = ((memory_basic_information.AllocationProtect && (PAGE_EXECUTE || PAGE_EXECUTE_READ || PAGE_EXECUTE_READWRITE || PAGE_EXECUTE_WRITECOPY)));
 			break;
 		}
 
-		if (!validRegion)
+		if (!validregion)
 		{
 			current += (DWORD64)memory_basic_information.RegionSize;
 			continue;
@@ -112,4 +113,12 @@ void code_cave_scanner(HANDLE hProcess, DWORD64 startaddress, DWORD64 stopaddres
 		current += (DWORD64)memory_basic_information.RegionSize;
 		free(buffer);
 	}
+	update_progress(percentage, 0);
+}
+
+void update_progress(HWND label, DWORD64 curraddr)
+{
+	BYTE strval[8*2+13] = "scanning... ";
+	_i64toa(curraddr, strval+12, 16);
+	SetWindowText(label, strval);
 }

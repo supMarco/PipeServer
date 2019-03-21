@@ -16,6 +16,7 @@ HWND hwndStaticMain02 = NULL;
 HWND hwndStaticMain03 = NULL;
 HWND hwndStaticMain04 = NULL;
 HWND hwndStaticMain05 = NULL;
+HWND hwndStaticMain06 = NULL;
 HWND hwndButtonMain01 = NULL;
 HWND hwndButtonMain02 = NULL;
 HWND hwndButtonMain03 = NULL;
@@ -128,6 +129,7 @@ void on_window_create(HWND hwnd)
 	hwndStaticMain04 = CreateWindow("Static", "?", WS_CHILD | WS_VISIBLE | SS_LEFT, 390, 50, 35, 20, hwnd, (HMENU)ID_LABEL04_MAIN, NULL, NULL);
 	hwndStaticMain03 = CreateWindow("Static", "Server address:", WS_CHILD | WS_VISIBLE | SS_LEFT, 455, 50, 300, 20, hwnd, (HMENU)ID_LABEL03_MAIN, NULL, NULL);
 	hwndStaticMain05 = CreateWindow("Static", "?", WS_CHILD | WS_VISIBLE | SS_LEFT, 570, 50, 100, 20, hwnd, (HMENU)ID_LABEL05_MAIN, NULL, NULL);
+	hwndStaticMain06 = CreateWindow("Static", "", WS_CHILD | WS_VISIBLE | SS_LEFT, 395, 90, 300, 20, hwnd, (HMENU)ID_LABEL06_MAIN, NULL, NULL);
 	hwndEditMain01 = CreateWindow("Edit", "DLL path", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_READONLY | ES_AUTOHSCROLL, 170, 10, 470, 25, hwnd, (HMENU)ID_EDIT01_MAIN, NULL, NULL);
 	hwndEditMain02 = CreateWindow("Edit", "EXE target", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL, 170, 45, 130, 25, hwnd, (HMENU)ID_EDIT02_MAIN, NULL, NULL);
 	hwndEditMain03 = CreateWindow("Edit", "Argument #1", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL, 10, 270, 280, 25, hwnd, (HMENU)ID_EDIT03_MAIN, NULL, NULL);
@@ -280,7 +282,7 @@ void on_button04_click()
 	sscanf((LPCTSTR)stopaddressstr, "%I64X", &stopaddress);
 	sscanf((LPCTSTR)sizestr, "%I64X", &size);
 
-	if (size) code_cave_scanner(hProcess, startaddress, stopaddress, size, includeReadOnlyNonExecutable, hwndListMain02);
+	if (size) code_cave_scanner(hProcess, startaddress, stopaddress, size, includeReadOnlyNonExecutable, hwndListMain02, hwndStaticMain06);
 	else MessageBox(hwndMain, "Insert a proper size", "Error", MB_ICONERROR | MB_OK);
 }
 
