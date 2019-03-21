@@ -9,6 +9,7 @@
 #include "funcPE.h"
 #include "misc.h"
 
+#pragma comment(linker,"/manifestdependency:\"type='win32' name='Microsoft.Windows.Common-Controls' " "version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #pragma comment(lib,"user32.lib")
 #pragma comment(lib, "Comdlg32.lib")
 
@@ -31,6 +32,7 @@
 #define ID_BUTTON02_MAIN 2002
 #define ID_BUTTON03_MAIN 2003
 #define ID_BUTTON04_MAIN 2004
+#define ID_BUTTON05_MAIN 2005
 
 #define ID_EDIT01_MAIN 3001
 #define ID_EDIT02_MAIN 3002

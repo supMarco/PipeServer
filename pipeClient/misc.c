@@ -1,6 +1,7 @@
 #pragma once
 #include "includes.h"
 
+BOOL stopscan = FALSE;
 
 HANDLE get_process_handle_by_name(BYTE * processname)
 {
@@ -50,7 +51,7 @@ void dword_to_aob_32(DWORD dword, BYTE * bytes)
 	*(DWORD *)bytes = dword;
 }
 
-void code_cave_scanner(HANDLE hProcess, DWORD64 startaddress, DWORD64 stopaddress, DWORD64 size, BOOL includeReadOnlyNonExecutable, HWND listbox, HWND percentage)
+void code_cave_scanner(struct _codecavescanner *param)
 {
 	MEMORY_BASIC_INFORMATION memory_basic_information = { NULL };
 	DWORD64 current = NULL;
@@ -61,16 +62,17 @@ void code_cave_scanner(HANDLE hProcess, DWORD64 startaddress, DWORD64 stopaddres
 	BYTE found[8*2+1] = { 0 };
 	BOOL validregion = FALSE;
 
-	SendMessage(listbox, LB_RESETCONTENT, NULL, NULL);
+	SendMessage(param->listbox, LB_RESETCONTENT, NULL, NULL);
 
-	current = startaddress;
+	update_progress(param->percentage, 0);
+	current = param->startaddress;
 	
-	while (current < stopaddress)
+	while ((current < param->stopaddress) && !stopscan)
 	{
-		update_progress(percentage, current);
-		VirtualQueryEx(hProcess, current, &memory_basic_information, sizeof(memory_basic_information));
+		update_progress(param->percentage, current);
+		VirtualQueryEx(param->hProcess, current, &memory_basic_information, sizeof(memory_basic_information));
 
-		switch (includeReadOnlyNonExecutable)
+		switch (param->includeReadOnlyNonExecutable)
 		{
 		case TRUE:
 			validregion = ((memory_basic_information.AllocationProtect && (PAGE_EXECUTE || PAGE_EXECUTE_READ || PAGE_EXECUTE_READWRITE || PAGE_READONLY || PAGE_EXECUTE_WRITECOPY)));
@@ -91,7 +93,7 @@ void code_cave_scanner(HANDLE hProcess, DWORD64 startaddress, DWORD64 stopaddres
 
 		bytecounter = currentbyte = 0;
 
-		if (ReadProcessMemory(hProcess, memory_basic_information.BaseAddress, buffer, memory_basic_information.RegionSize, bytesread))
+		if (ReadProcessMemory(param->hProcess, memory_basic_information.BaseAddress, buffer, memory_basic_information.RegionSize, bytesread))
 		{
 			for (int i = 0; i < memory_basic_information.RegionSize; i++)
 			{
@@ -101,19 +103,23 @@ void code_cave_scanner(HANDLE hProcess, DWORD64 startaddress, DWORD64 stopaddres
 					currentbyte = buffer[i];
 					bytecounter = 1;
 				}
-				if (bytecounter == size)
+				if (bytecounter == param->size)
 				{
 					_i64toa(((DWORD64)(memory_basic_information.BaseAddress) + i - bytecounter + 1), found, 16);
 					_strupr(found);
-					SendMessage(listbox, LB_ADDSTRING, NULL, found);
+					SendMessage(param->listbox, LB_ADDSTRING, NULL, found);
 				}
 			}
 		}
-
 		current += (DWORD64)memory_basic_information.RegionSize;
 		free(buffer);
 	}
-	update_progress(percentage, 0);
+	if (stopscan)
+	{
+		EnableWindow(param->stopbutton, TRUE);
+		stopscan = FALSE;
+	}
+	free(param);
 }
 
 void update_progress(HWND label, DWORD64 curraddr)

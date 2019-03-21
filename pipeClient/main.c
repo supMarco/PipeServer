@@ -1,5 +1,4 @@
 #include "includes.h"
-#pragma comment(linker,"/manifestdependency:\"type='win32' name='Microsoft.Windows.Common-Controls' " "version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 
 LRESULT CALLBACK WindowProc(HWND, UINT, WPARAM, LPARAM);
 
@@ -8,6 +7,7 @@ void on_button01_click();
 void on_button02_click();
 void on_button03_click();
 void on_button04_click();
+void on_button05_click();
 
 
 HWND hwndMain = NULL;
@@ -21,6 +21,7 @@ HWND hwndButtonMain01 = NULL;
 HWND hwndButtonMain02 = NULL;
 HWND hwndButtonMain03 = NULL;
 HWND hwndButtonMain04 = NULL;
+HWND hwndButtonMain05 = NULL;
 HWND hwndEditMain01 = NULL;
 HWND hwndEditMain02 = NULL;
 HWND hwndEditMain03 = NULL;
@@ -110,6 +111,9 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		case ID_BUTTON04_MAIN:
 			on_button04_click();
 			return 0;
+		case ID_BUTTON05_MAIN:
+			on_button05_click();
+			return 0;
 		}
 		return 0;
 	}
@@ -123,7 +127,8 @@ void on_window_create(HWND hwnd)
 	hwndButtonMain01 = CreateWindow("Button", "Inject and connect", WS_CHILD | WS_VISIBLE, 10, 10, 150, 60, hwnd, (HMENU)ID_BUTTON01_MAIN, NULL, NULL);
 	hwndButtonMain02 = CreateWindow("Button", "Call function", WS_CHILD | WS_VISIBLE, 10, 300, 280, 25, hwnd, (HMENU)ID_BUTTON02_MAIN, NULL, NULL);
 	hwndButtonMain03 = CreateWindow("Button", "...", WS_CHILD | WS_VISIBLE, 645, 10, 30, 25, hwnd, (HMENU)ID_BUTTON03_MAIN, NULL, NULL);
-	hwndButtonMain04 = CreateWindow("Button", "Scan for codecaves", WS_CHILD | WS_VISIBLE, 395, 300, 280, 25, hwnd, (HMENU)ID_BUTTON04_MAIN, NULL, NULL);
+	hwndButtonMain04 = CreateWindow("Button", "Scan for codecaves", WS_CHILD | WS_VISIBLE, 485, 300, 190, 25, hwnd, (HMENU)ID_BUTTON04_MAIN, NULL, NULL);
+	hwndButtonMain05 = CreateWindow("Button", "Stop", WS_CHILD | WS_VISIBLE, 395, 300, 80, 25, hwnd, (HMENU)ID_BUTTON05_MAIN, NULL, NULL);
 	hwndStaticMain01 = CreateWindow("Static", "Functions exported by pipeServer.dll", WS_CHILD | WS_VISIBLE | SS_LEFT, 15, 90, 300, 20, hwnd, (HMENU)ID_LABEL01_MAIN, NULL, NULL);
 	hwndStaticMain02 = CreateWindow("Static", "Machine:", WS_CHILD | WS_VISIBLE | SS_LEFT, 320, 50, 300, 20, hwnd, (HMENU)ID_LABEL02_MAIN, NULL, NULL);
 	hwndStaticMain04 = CreateWindow("Static", "?", WS_CHILD | WS_VISIBLE | SS_LEFT, 390, 50, 35, 20, hwnd, (HMENU)ID_LABEL04_MAIN, NULL, NULL);
@@ -138,6 +143,9 @@ void on_window_create(HWND hwnd)
 	hwndEditMain06 = CreateWindow("Edit", "Size", WS_CHILD | WS_VISIBLE | WS_BORDER, 625, 270, 50, 25, hwnd, (HMENU)ID_EDIT06_MAIN, NULL, NULL);
 	hwndListMain01 = CreateWindow("ListBox", NULL, WS_CHILD | WS_VISIBLE | LBS_NOTIFY | LBS_DISABLENOSCROLL | LBS_STANDARD, 10, 115, 280, 155, hwnd, (HMENU)ID_LIST01_MAIN, NULL, NULL);
 	hwndListMain02 = CreateWindow("ListBox", NULL, WS_CHILD | WS_VISIBLE | LBS_NOTIFY | LBS_DISABLENOSCROLL | LBS_STANDARD, 395, 115, 280, 155, hwnd, (HMENU)ID_LIST02_MAIN, NULL, NULL);
+	SendMessage(hwndEditMain04, EM_SETLIMITTEXT, 8 * 2, NULL);
+	SendMessage(hwndEditMain05, EM_SETLIMITTEXT, 8 * 2, NULL);
+	SendMessage(hwndEditMain06, EM_SETLIMITTEXT, 8 * 2, NULL);
 }
 
 void on_button01_click()
@@ -282,10 +290,28 @@ void on_button04_click()
 	sscanf((LPCTSTR)stopaddressstr, "%I64X", &stopaddress);
 	sscanf((LPCTSTR)sizestr, "%I64X", &size);
 
-	if (size) code_cave_scanner(hProcess, startaddress, stopaddress, size, includeReadOnlyNonExecutable, hwndListMain02, hwndStaticMain06);
+	struct _codecavescanner *param = malloc(sizeof(struct _codecavescanner));
+	param->hProcess = hProcess;
+	param->startaddress = startaddress;
+	param->stopaddress = stopaddress;
+	param->size = size;
+	param->includeReadOnlyNonExecutable = includeReadOnlyNonExecutable;
+	param->listbox = hwndListMain02;
+	param->stopbutton = hwndButtonMain05;
+	param->percentage = hwndStaticMain06;
+
+	if (size) CreateThread(NULL, NULL, &code_cave_scanner, (LPVOID)param, NULL, NULL);
 	else MessageBox(hwndMain, "Insert a proper size", "Error", MB_ICONERROR | MB_OK);
 }
 
+void on_button05_click()
+{
+	if (!stopscan)
+	{
+		stopscan = TRUE;
+		EnableWindow(hwndButtonMain05, FALSE);
+	}
+}
 
 BOOL inject_and_start_server(BYTE * functiontocall)
 {
