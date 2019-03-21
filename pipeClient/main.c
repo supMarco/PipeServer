@@ -7,6 +7,7 @@ void on_window_create(HWND);
 void on_button01_click();
 void on_button02_click();
 void on_button03_click();
+void on_button04_click();
 
 
 HWND hwndMain = NULL;
@@ -18,10 +19,15 @@ HWND hwndStaticMain05 = NULL;
 HWND hwndButtonMain01 = NULL;
 HWND hwndButtonMain02 = NULL;
 HWND hwndButtonMain03 = NULL;
+HWND hwndButtonMain04 = NULL;
 HWND hwndEditMain01 = NULL;
 HWND hwndEditMain02 = NULL;
 HWND hwndEditMain03 = NULL;
+HWND hwndEditMain04 = NULL;
+HWND hwndEditMain05 = NULL;
+HWND hwndEditMain06 = NULL;
 HWND hwndListMain01 = NULL;
+HWND hwndListMain02 = NULL;
 
 BYTE dllPath[STR_SIZE] = { 0 };
 BYTE exePath[STR_SIZE] = { 0 };
@@ -100,6 +106,9 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		case ID_BUTTON03_MAIN:
 			on_button03_click();
 			return 0;
+		case ID_BUTTON04_MAIN:
+			on_button04_click();
+			return 0;
 		}
 		return 0;
 	}
@@ -113,15 +122,20 @@ void on_window_create(HWND hwnd)
 	hwndButtonMain01 = CreateWindow("Button", "Inject and connect", WS_CHILD | WS_VISIBLE, 10, 10, 150, 60, hwnd, (HMENU)ID_BUTTON01_MAIN, NULL, NULL);
 	hwndButtonMain02 = CreateWindow("Button", "Call function", WS_CHILD | WS_VISIBLE, 10, 300, 280, 25, hwnd, (HMENU)ID_BUTTON02_MAIN, NULL, NULL);
 	hwndButtonMain03 = CreateWindow("Button", "...", WS_CHILD | WS_VISIBLE, 645, 10, 30, 25, hwnd, (HMENU)ID_BUTTON03_MAIN, NULL, NULL);
+	hwndButtonMain04 = CreateWindow("Button", "Scan for codecaves", WS_CHILD | WS_VISIBLE, 395, 300, 280, 25, hwnd, (HMENU)ID_BUTTON04_MAIN, NULL, NULL);
 	hwndStaticMain01 = CreateWindow("Static", "Functions exported by pipeServer.dll", WS_CHILD | WS_VISIBLE | SS_LEFT, 15, 90, 300, 20, hwnd, (HMENU)ID_LABEL01_MAIN, NULL, NULL);
 	hwndStaticMain02 = CreateWindow("Static", "Machine:", WS_CHILD | WS_VISIBLE | SS_LEFT, 320, 50, 300, 20, hwnd, (HMENU)ID_LABEL02_MAIN, NULL, NULL);
 	hwndStaticMain04 = CreateWindow("Static", "?", WS_CHILD | WS_VISIBLE | SS_LEFT, 390, 50, 35, 20, hwnd, (HMENU)ID_LABEL04_MAIN, NULL, NULL);
 	hwndStaticMain03 = CreateWindow("Static", "Server address:", WS_CHILD | WS_VISIBLE | SS_LEFT, 455, 50, 300, 20, hwnd, (HMENU)ID_LABEL03_MAIN, NULL, NULL);
 	hwndStaticMain05 = CreateWindow("Static", "?", WS_CHILD | WS_VISIBLE | SS_LEFT, 570, 50, 100, 20, hwnd, (HMENU)ID_LABEL05_MAIN, NULL, NULL);
-	hwndEditMain01 = CreateWindow("Edit", "DLL path", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_READONLY, 170, 10, 470, 25, hwnd, (HMENU)ID_EDIT01_MAIN, NULL, NULL);
-	hwndEditMain02 = CreateWindow("Edit", "EXE target", WS_CHILD | WS_VISIBLE | WS_BORDER, 170, 45, 130, 25, hwnd, (HMENU)ID_EDIT02_MAIN, NULL, NULL);
-	hwndEditMain03 = CreateWindow("Edit", "Argument #1", WS_CHILD | WS_VISIBLE | WS_BORDER, 10, 270, 280, 25, hwnd, (HMENU)ID_EDIT03_MAIN, NULL, NULL);
+	hwndEditMain01 = CreateWindow("Edit", "DLL path", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_READONLY | ES_AUTOHSCROLL, 170, 10, 470, 25, hwnd, (HMENU)ID_EDIT01_MAIN, NULL, NULL);
+	hwndEditMain02 = CreateWindow("Edit", "EXE target", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL, 170, 45, 130, 25, hwnd, (HMENU)ID_EDIT02_MAIN, NULL, NULL);
+	hwndEditMain03 = CreateWindow("Edit", "Argument #1", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL, 10, 270, 280, 25, hwnd, (HMENU)ID_EDIT03_MAIN, NULL, NULL);
+	hwndEditMain04 = CreateWindow("Edit", "Start address", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL, 395, 270, 110, 25, hwnd, (HMENU)ID_EDIT04_MAIN, NULL, NULL);
+	hwndEditMain05 = CreateWindow("Edit", "Stop address", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL, 510, 270, 110, 25, hwnd, (HMENU)ID_EDIT05_MAIN, NULL, NULL);
+	hwndEditMain06 = CreateWindow("Edit", "Size", WS_CHILD | WS_VISIBLE | WS_BORDER, 625, 270, 50, 25, hwnd, (HMENU)ID_EDIT06_MAIN, NULL, NULL);
 	hwndListMain01 = CreateWindow("ListBox", NULL, WS_CHILD | WS_VISIBLE | LBS_NOTIFY | LBS_DISABLENOSCROLL | LBS_STANDARD, 10, 115, 280, 155, hwnd, (HMENU)ID_LIST01_MAIN, NULL, NULL);
+	hwndListMain02 = CreateWindow("ListBox", NULL, WS_CHILD | WS_VISIBLE | LBS_NOTIFY | LBS_DISABLENOSCROLL | LBS_STANDARD, 395, 115, 280, 155, hwnd, (HMENU)ID_LIST02_MAIN, NULL, NULL);
 }
 
 void on_button01_click()
@@ -145,10 +159,16 @@ void on_button01_click()
 	GetWindowText(hwndEditMain02, (LPSTR)exeName, sizeof(exeName) - 1);
 
 	if (!(hProcess = get_process_handle_by_name(exeName)))
+	{
+		free(dllBuffer);
 		return;
+	}
 
 	if (!GetModuleFileNameEx(hProcess, NULL, exePath, sizeof(exePath) - 1))
+	{
+		free(dllBuffer);
 		return;
+	}
 
 	if (!load_file(exePath, &exeBuffer))
 		return;
@@ -156,7 +176,11 @@ void on_button01_click()
 	exeMachine = get_machine_type(exeBuffer);
 
 	if (exeMachine != dllMachine)
+	{
+		free(exeBuffer);
+		free(dllBuffer);
 		return;
+	}
 	numberOfExportedFunctions = get_exported_functions_x64_x86(dllBuffer, serverExportedFunctions, dllMachine);
 
 	for (unsigned int i = 0; i < numberOfExportedFunctions && serverExportedFunctions[i]; i++)
@@ -164,6 +188,7 @@ void on_button01_click()
 		if (strstr((char const *)serverExportedFunctions[i], (const char *)PIPE_SERVER_STARTER)) starterIndex = i;
 		SendMessage(hwndListMain01, LB_ADDSTRING, NULL, (LPARAM)serverExportedFunctions[i]);
 	}
+	free(exeBuffer);
 	free(dllBuffer);
 
 	if (!inject_and_start_server(serverExportedFunctions[starterIndex]))
@@ -235,6 +260,28 @@ void on_button03_click()
 	if (!GetOpenFileNameA(&ofna))
 		return;
 	SetWindowText(hwndEditMain01, dllPath);
+}
+
+void on_button04_click()
+{
+	BYTE startaddressstr[STR_SIZE] = { NULL };
+	BYTE stopaddressstr[STR_SIZE] = { NULL };
+	BYTE sizestr[STR_SIZE] = { NULL };
+
+	DWORD64 startaddress = NULL;
+	DWORD64 stopaddress = NULL;
+	DWORD64 size = NULL;
+	BOOL includeReadOnlyNonExecutable = FALSE;
+
+	GetWindowText(hwndEditMain04, startaddressstr, STR_SIZE - 1);
+	GetWindowText(hwndEditMain05, stopaddressstr, STR_SIZE - 1);
+	GetWindowText(hwndEditMain06, sizestr, STR_SIZE - 1);
+	sscanf((LPCTSTR)startaddressstr, "%I64X", &startaddress);
+	sscanf((LPCTSTR)stopaddressstr, "%I64X", &stopaddress);
+	sscanf((LPCTSTR)sizestr, "%I64X", &size);
+
+	if (size) code_cave_scanner(hProcess, startaddress, stopaddress, size, includeReadOnlyNonExecutable, hwndListMain02);
+	else MessageBox(hwndMain, "Insert a proper size", "Error", MB_ICONERROR | MB_OK);
 }
 
 

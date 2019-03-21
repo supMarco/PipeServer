@@ -8,3 +8,4 @@ BOOL load_file(BYTE *, BYTE **);
 void dword_to_aob_64(DWORD64, BYTE *);
 #endif
 void dword_to_aob_32(DWORD, BYTE *);
+void code_cave_scanner(HANDLE hProcess, DWORD64 startaddress, DWORD64 stopaddress, DWORD64 size, BOOL includeReadOnlyNonExecutable, HWND listbox);
