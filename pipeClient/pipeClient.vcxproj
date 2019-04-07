@@ -124,11 +124,13 @@
     <ClCompile Include="funcPE.c" />
     <ClCompile Include="main.c" />
     <ClCompile Include="misc.c" />
+    <ClCompile Include="proc.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="funcPE.h" />
     <ClInclude Include="includes.h" />
     <ClInclude Include="misc.h" />
+    <ClInclude Include="proc.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

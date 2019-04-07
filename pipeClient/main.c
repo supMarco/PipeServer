@@ -9,6 +9,7 @@ void on_button03_click();
 void on_button04_click();
 void on_button05_click();
 void on_button06_click();
+void on_menuitem_refresh_click();
 
 HWND hwndMain = NULL;
 HWND hwndStaticMain01 = NULL;
@@ -35,7 +36,9 @@ HWND hwndListMain02 = NULL;
 BYTE dllPath[STR_SIZE] = { 0 };
 BYTE exePath[STR_SIZE] = { 0 };
 BYTE exeName[STR_SIZE] = { 0 };
-BYTE serverLocationStr[STR_SIZE] = { 0 };
+BYTE serverLocationStr[STR_SIZE] = "Pipe Client - Connected to server - Server Location: ";
+
+struct WIN_PROCESS procarr[PROC_DEFAULT] = { 0 };
 
 BOOL initSuccess = FALSE;
 #ifdef BUILD64
@@ -73,7 +76,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nC
 
 	RegisterClass(&wndClass);
 
-	hwndMain = CreateWindow(className, "Pipe Client - Disconnected from server", WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX, CW_USEDEFAULT, CW_USEDEFAULT, 700, 380, NULL, NULL, hInst, NULL);
+	hwndMain = CreateWindow(className, "Pipe Client - Disconnected from server", WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX, CW_USEDEFAULT, CW_USEDEFAULT, 1000, 380, NULL, NULL, hInst, NULL);
 
 	if (hwndMain)
 	{
@@ -118,8 +121,29 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		case ID_BUTTON06_MAIN:
 			on_button06_click();
 			return 0;
+		case ID_MENU_LIST02_REFRESH:
+			on_menuitem_refresh_click();
+			return 0;
 		}
 		return 0;
+	case WM_NOTIFY:
+		switch (wParam)
+		{
+		case ID_LIST02_MAIN:
+			if (((NMHDR*)lParam)->code == NM_RCLICK)
+			{
+				HMENU hPopupMenu = CreatePopupMenu();
+				POINT p;
+				if (GetCursorPos(&p))
+				{
+					//cursor position now in p.x and p.y
+				}
+				InsertMenu(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_MENU_LIST02_REFRESH, "Refresh");
+				SetForegroundWindow(hwndMain);
+				TrackPopupMenu(hPopupMenu, TPM_BOTTOMALIGN | TPM_LEFTALIGN, p.x, p.y, 0, hwndMain, NULL);
+			}
+			return 0;
+		}
 	}
 	return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
@@ -128,29 +152,43 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 void on_window_create(HWND hwnd)
 {
-	hwndButtonMain01 = CreateWindow("Button", "Inject and connect", WS_CHILD | WS_VISIBLE, 10, 10, 150, 25, hwnd, (HMENU)ID_BUTTON01_MAIN, NULL, NULL);
-	hwndButtonMain02 = CreateWindow("Button", "Call function", WS_CHILD | WS_VISIBLE, 10, 300, 280, 25, hwnd, (HMENU)ID_BUTTON02_MAIN, NULL, NULL);
-	hwndButtonMain03 = CreateWindow("Button", "...", WS_CHILD | WS_VISIBLE, 645, 10, 30, 25, hwnd, (HMENU)ID_BUTTON03_MAIN, NULL, NULL);
-	hwndButtonMain04 = CreateWindow("Button", "Scan for codecaves", WS_CHILD | WS_VISIBLE, 485, 300, 190, 25, hwnd, (HMENU)ID_BUTTON04_MAIN, NULL, NULL);
-	hwndButtonMain05 = CreateWindow("Button", "Stop", WS_CHILD | WS_VISIBLE, 395, 300, 80, 25, hwnd, (HMENU)ID_BUTTON05_MAIN, NULL, NULL);
-	hwndButtonMain06 = CreateWindow("Button", "Attach to", WS_CHILD | WS_VISIBLE, 10, 45, 150, 25, hwnd, (HMENU)ID_BUTTON06_MAIN, NULL, NULL);
-	hwndStaticMain01 = CreateWindow("Static", "Functions exported by pipeServer.dll", WS_CHILD | WS_VISIBLE | SS_LEFT, 15, 90, 300, 20, hwnd, (HMENU)ID_LABEL01_MAIN, NULL, NULL);
-	hwndStaticMain02 = CreateWindow("Static", "Machine:", WS_CHILD | WS_VISIBLE | SS_LEFT, 320, 50, 300, 20, hwnd, (HMENU)ID_LABEL02_MAIN, NULL, NULL);
-	hwndStaticMain04 = CreateWindow("Static", "?", WS_CHILD | WS_VISIBLE | SS_LEFT, 390, 50, 35, 20, hwnd, (HMENU)ID_LABEL04_MAIN, NULL, NULL);
-	hwndStaticMain03 = CreateWindow("Static", "Server address:", WS_CHILD | WS_VISIBLE | SS_LEFT, 455, 50, 300, 20, hwnd, (HMENU)ID_LABEL03_MAIN, NULL, NULL);
-	hwndStaticMain05 = CreateWindow("Static", "?", WS_CHILD | WS_VISIBLE | SS_LEFT, 570, 50, 100, 20, hwnd, (HMENU)ID_LABEL05_MAIN, NULL, NULL);
+	hwndButtonMain01 = CreateWindow("Button", "Inject and connect", WS_CHILD | WS_VISIBLE, 300, 30, 150, 25, hwnd, (HMENU)ID_BUTTON01_MAIN, NULL, NULL);
+	hwndButtonMain02 = CreateWindow("Button", "Call function", WS_CHILD | WS_VISIBLE, 300, 290, 280, 25, hwnd, (HMENU)ID_BUTTON02_MAIN, NULL, NULL);
+	hwndButtonMain03 = CreateWindow("Button", "...", WS_CHILD | WS_VISIBLE, 935, 30, 30, 25, hwnd, (HMENU)ID_BUTTON03_MAIN, NULL, NULL);
+	//hwndButtonMain04 = CreateWindow("Button", "Scan for codecaves", WS_CHILD /*| WS_VISIBLE*/, 485, 300, 190, 25, hwnd, (HMENU)ID_BUTTON04_MAIN, NULL, NULL);
+	//hwndButtonMain05 = CreateWindow("Button", "Stop", WS_CHILD /*| WS_VISIBLE*/, 395, 300, 80, 25, hwnd, (HMENU)ID_BUTTON05_MAIN, NULL, NULL);
+	hwndButtonMain06 = CreateWindow("Button", "Attach", WS_CHILD | WS_VISIBLE, 10, 290, 280, 25, hwnd, (HMENU)ID_BUTTON06_MAIN, NULL, NULL);
+	hwndStaticMain01 = CreateWindow("Static", "Functions exported by the server", WS_CHILD | WS_VISIBLE | SS_LEFT, 300, 70, 300, 20, hwnd, (HMENU)ID_LABEL01_MAIN, NULL, NULL);
+	//hwndStaticMain02 = CreateWindow("Static", "Machine:", WS_CHILD /*| WS_VISIBLE*/ | SS_LEFT, 320, 50, 300, 20, hwnd, (HMENU)ID_LABEL02_MAIN, NULL, NULL);
+	//hwndStaticMain04 = CreateWindow("Static", "?", WS_CHILD /*| WS_VISIBLE*/ | SS_LEFT, 390, 50, 35, 20, hwnd, (HMENU)ID_LABEL04_MAIN, NULL, NULL);
+	hwndStaticMain03 = CreateWindow("Static", "Process list", WS_CHILD | WS_VISIBLE | SS_LEFT, 10, 10, 300, 20, hwnd, (HMENU)ID_LABEL03_MAIN, NULL, NULL);
+	hwndStaticMain05 = CreateWindow("Static", "DLL Path", WS_CHILD | WS_VISIBLE | SS_LEFT, 460, 10, 100, 20, hwnd, (HMENU)ID_LABEL05_MAIN, NULL, NULL);
 	hwndStaticMain06 = CreateWindow("Static", "", WS_CHILD | WS_VISIBLE | SS_LEFT, 395, 90, 300, 20, hwnd, (HMENU)ID_LABEL06_MAIN, NULL, NULL);
-	hwndEditMain01 = CreateWindow("Edit", "DLL path", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_READONLY | ES_AUTOHSCROLL, 170, 10, 470, 25, hwnd, (HMENU)ID_EDIT01_MAIN, NULL, NULL);
-	hwndEditMain02 = CreateWindow("Edit", "EXE target", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL, 170, 45, 130, 25, hwnd, (HMENU)ID_EDIT02_MAIN, NULL, NULL);
-	hwndEditMain03 = CreateWindow("Edit", "Argument #1", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL, 10, 270, 280, 25, hwnd, (HMENU)ID_EDIT03_MAIN, NULL, NULL);
-	hwndEditMain04 = CreateWindow("Edit", "Start address", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL, 395, 270, 110, 25, hwnd, (HMENU)ID_EDIT04_MAIN, NULL, NULL);
-	hwndEditMain05 = CreateWindow("Edit", "Stop address", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL, 510, 270, 110, 25, hwnd, (HMENU)ID_EDIT05_MAIN, NULL, NULL);
-	hwndEditMain06 = CreateWindow("Edit", "Size", WS_CHILD | WS_VISIBLE | WS_BORDER, 625, 270, 50, 25, hwnd, (HMENU)ID_EDIT06_MAIN, NULL, NULL);
-	hwndListMain01 = CreateWindow("ListBox", NULL, WS_CHILD | WS_VISIBLE | LBS_NOTIFY | LBS_DISABLENOSCROLL | LBS_STANDARD, 10, 115, 280, 155, hwnd, (HMENU)ID_LIST01_MAIN, NULL, NULL);
-	hwndListMain02 = CreateWindow("ListBox", NULL, WS_CHILD | WS_VISIBLE | LBS_NOTIFY | LBS_DISABLENOSCROLL | LBS_STANDARD, 395, 115, 280, 155, hwnd, (HMENU)ID_LIST02_MAIN, NULL, NULL);
+	hwndEditMain01 = CreateWindow("Edit", "", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_READONLY | ES_AUTOHSCROLL, 460, 30, 470, 25, hwnd, (HMENU)ID_EDIT01_MAIN, NULL, NULL);
+	//hwndEditMain02 = CreateWindow("Edit", "EXE target", WS_CHILD /*| WS_VISIBLE*/ | WS_BORDER | ES_AUTOHSCROLL, 170, 45, 130, 25, hwnd, (HMENU)ID_EDIT02_MAIN, NULL, NULL);
+	hwndEditMain03 = CreateWindow("Edit", "Argument #1", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL, 300, 260, 280, 25, hwnd, (HMENU)ID_EDIT03_MAIN, NULL, NULL);
+	//hwndEditMain04 = CreateWindow("Edit", "Start address", WS_CHILD /*| WS_VISIBLE*/ | WS_BORDER | ES_AUTOHSCROLL, 395, 270, 110, 25, hwnd, (HMENU)ID_EDIT04_MAIN, NULL, NULL);
+	//hwndEditMain05 = CreateWindow("Edit", "Stop address", WS_CHILD /*| WS_VISIBLE*/ | WS_BORDER | ES_AUTOHSCROLL, 510, 270, 110, 25, hwnd, (HMENU)ID_EDIT05_MAIN, NULL, NULL);
+	//hwndEditMain06 = CreateWindow("Edit", "Size", WS_CHILD /*| WS_VISIBLE*/ | WS_BORDER, 625, 270, 50, 25, hwnd, (HMENU)ID_EDIT06_MAIN, NULL, NULL);
+	hwndListMain01 = CreateWindow("ListBox", NULL, WS_CHILD | WS_VISIBLE | WS_BORDER | LBS_NOTIFY | LBS_DISABLENOSCROLL | LBS_STANDARD, 300, 90, 280, 165, hwnd, (HMENU)ID_LIST01_MAIN, NULL, NULL);
+	hwndListMain02 = CreateWindow("SysListView32", NULL, WS_CHILD | WS_VISIBLE | WS_BORDER | LVS_REPORT, 10, 30, 280, 255, hwnd, (HMENU)ID_LIST02_MAIN, NULL, NULL);
 	SendMessage(hwndEditMain04, EM_SETLIMITTEXT, 8 * 2, NULL);
 	SendMessage(hwndEditMain05, EM_SETLIMITTEXT, 8 * 2, NULL);
 	SendMessage(hwndEditMain06, EM_SETLIMITTEXT, 8 * 2, NULL);
+
+	LVCOLUMN lvc;
+	lvc.mask = LVCF_FMT | LVCF_WIDTH | LVCF_TEXT | LVCF_SUBITEM;
+	lvc.iSubItem = 1;
+	lvc.pszText = "PID";
+	lvc.cx = 50;
+	//lvc.fmt = LVCFMT_LEFT;
+	ListView_InsertColumn(hwndListMain02, 0, &lvc);
+	lvc.iSubItem = 0;
+	lvc.pszText = "Name";
+	lvc.cx = 230;
+	ListView_InsertColumn(hwndListMain02, 0, &lvc);
+
+	on_menuitem_refresh_click();
 }
 
 void on_button01_click()
@@ -236,11 +274,9 @@ void on_button02_click()
 			WriteFile(hPipe, selFunction, STR_SIZE - 1, (LPDWORD)&bytesWritten, NULL);
 			ReadFile(hPipe, &serverLocation, sizeof(DWORD64), (LPDWORD)&bytesRead, NULL); //Fetch info from the server (server location in the target)
 			//Grabbing exe info from the server
-			_i64toa(serverLocation, serverLocationStr, 16);
-			_strupr(serverLocationStr);
-			if (exeMachine == IMAGE_NT_OPTIONAL_HDR64_MAGIC) SetWindowText(hwndStaticMain04, "PE64");
-			else SetWindowText(hwndStaticMain04, "PE32");
-			SetWindowText(hwndStaticMain05, serverLocationStr);
+			_i64toa(serverLocation, serverLocationStr+ strlen(serverLocationStr), 16);
+			//_strupr(serverLocationStr);
+			SetWindowText(hwndMain, serverLocationStr);
 			initSuccess = TRUE;
 			MessageBox(hwndMain, "Ready to start", "Pipe Client", MB_OK | MB_ICONINFORMATION);
 			return;
@@ -275,34 +311,7 @@ void on_button03_click()
 
 void on_button04_click()
 {
-	BYTE startaddressstr[STR_SIZE] = { NULL };
-	BYTE stopaddressstr[STR_SIZE] = { NULL };
-	BYTE sizestr[STR_SIZE] = { NULL };
 
-	DWORD64 startaddress = NULL;
-	DWORD64 stopaddress = NULL;
-	DWORD64 size = NULL;
-	BOOL includeReadOnlyNonExecutable = FALSE;
-
-	GetWindowText(hwndEditMain04, startaddressstr, STR_SIZE - 1);
-	GetWindowText(hwndEditMain05, stopaddressstr, STR_SIZE - 1);
-	GetWindowText(hwndEditMain06, sizestr, STR_SIZE - 1);
-	sscanf((LPCTSTR)startaddressstr, "%I64X", &startaddress);
-	sscanf((LPCTSTR)stopaddressstr, "%I64X", &stopaddress);
-	sscanf((LPCTSTR)sizestr, "%I64X", &size);
-
-	struct _codecavescanner *param = malloc(sizeof(struct _codecavescanner));
-	param->hProcess = hProcess;
-	param->startaddress = startaddress;
-	param->stopaddress = stopaddress;
-	param->size = size;
-	param->includeReadOnlyNonExecutable = includeReadOnlyNonExecutable;
-	param->listbox = hwndListMain02;
-	param->stopbutton = hwndButtonMain05;
-	param->percentage = hwndStaticMain06;
-
-	if (size) CreateThread(NULL, NULL, &code_cave_scanner, (LPVOID)param, NULL, NULL);
-	else MessageBox(hwndMain, "Insert a proper size", "Error", MB_ICONERROR | MB_OK);
 }
 
 void on_button05_click()
@@ -316,18 +325,48 @@ void on_button05_click()
 
 void on_button06_click()
 {
-	GetWindowText(hwndEditMain02, (LPSTR)exeName, sizeof(exeName) - 1);
+	BYTE pid[STR_SIZE];
+
+	ListView_GetItemText(hwndListMain02, ListView_GetNextItem(hwndListMain02, -1, LVNI_SELECTED), 0, exeName, STR_SIZE);
+	ListView_GetItemText(hwndListMain02, ListView_GetNextItem(hwndListMain02, -1, LVNI_SELECTED), 1, pid, STR_SIZE);
 
 	if (hProcess)
 	{
 		MessageBox(hwndMain, "Already attached", "Error", MB_ICONINFORMATION | MB_OK);
 		return;
 	}
-	if (!(hProcess = get_process_handle_by_name(exeName)))
+	if (!(hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, _strtoi64(pid, NULL, 10))))
 	{
 		MessageBox(hwndMain, "Unable to attach", "Error", MB_ICONERROR | MB_OK);
 		return;
 	}
+}
+
+void on_menuitem_refresh_click()
+{
+	LVITEM lvi;
+	DWORD currPos = ListView_GetNextItem(hwndListMain02, -1, LVNI_SELECTED);
+	BYTE pid[STR_SIZE] = { 0 };
+
+	lvi.mask = LVIF_TEXT;
+
+	ZeroMemory(procarr, sizeof(struct WIN_PROCESS) * PROC_DEFAULT);
+	ListView_DeleteAllItems(hwndListMain02);
+
+	getProcesses(procarr);
+
+	for (int i = 0; procarr[i].pid | !i; i++)
+	{
+		lvi.iItem = i;
+		lvi.iSubItem = 0;
+		lvi.pszText = procarr[i].pname;
+		ListView_InsertItem(hwndListMain02, &lvi);
+		lvi.iSubItem = 1;
+		_itoa(procarr[i].pid, pid, 10);
+		lvi.pszText = pid;
+		ListView_SetItem(hwndListMain02, &lvi);
+	}
+	ListView_EnsureVisible(hwndListMain02, currPos, TRUE);
 }
 
 BOOL inject_and_start_server(BYTE * functiontocall)

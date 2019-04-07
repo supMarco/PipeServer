@@ -22,17 +22,23 @@
       <Filter>File di origine</Filter>
     </ClCompile>
     <ClCompile Include="funcPE.c">
-      <Filter>File di intestazione</Filter>
+      <Filter>File di origine</Filter>
+    </ClCompile>
+    <ClCompile Include="proc.c">
+      <Filter>File di origine</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="misc.h">
-      <Filter>File di origine</Filter>
-    </ClInclude>
     <ClInclude Include="includes.h">
       <Filter>File di intestazione</Filter>
     </ClInclude>
     <ClInclude Include="funcPE.h">
+      <Filter>File di intestazione</Filter>
+    </ClInclude>
+    <ClInclude Include="misc.h">
+      <Filter>File di intestazione</Filter>
+    </ClInclude>
+    <ClInclude Include="proc.h">
       <Filter>File di intestazione</Filter>
     </ClInclude>
   </ItemGroup>

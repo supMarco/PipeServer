@@ -6,8 +6,13 @@
 #include <stdio.h>
 #include <tlhelp32.h>
 #include <psapi.h>
+#include <commctrl.h>
+
+#define STR_SIZE 256
+
 #include "funcPE.h"
 #include "misc.h"
+#include "proc.h"
 
 #pragma comment(linker,"/manifestdependency:\"type='win32' name='Microsoft.Windows.Common-Controls' " "version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #pragma comment(lib,"user32.lib")
@@ -15,7 +20,6 @@
 
 #define BUILD64 //comment this out for x86
 
-#define STR_SIZE 256
 #define DEFAULT_ALLOCATION_SIZE 4096
 #define DLL_NAME "pipeServer.dll"
 #define PIPE_NAME "\\\\.\\pipe\\pipeServer"
@@ -44,3 +48,5 @@
 
 #define ID_LIST01_MAIN 4001
 #define ID_LIST02_MAIN 4002
+
+#define ID_MENU_LIST02_REFRESH 5001
