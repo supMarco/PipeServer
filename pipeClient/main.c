@@ -6,30 +6,30 @@ void on_window_create(HWND);
 void on_button01_click();
 void on_button02_click();
 void on_button03_click();
-void on_button04_click();
-void on_button05_click();
+void on_button04_click(); //free
+void on_button05_click(); //free
 void on_button06_click();
 void on_menuitem_refresh_click();
 
 HWND hwndMain = NULL;
 HWND hwndStaticMain01 = NULL;
-HWND hwndStaticMain02 = NULL;
+HWND hwndStaticMain02 = NULL; //free
 HWND hwndStaticMain03 = NULL;
-HWND hwndStaticMain04 = NULL;
+HWND hwndStaticMain04 = NULL; //free
 HWND hwndStaticMain05 = NULL;
 HWND hwndStaticMain06 = NULL;
 HWND hwndButtonMain01 = NULL;
 HWND hwndButtonMain02 = NULL;
 HWND hwndButtonMain03 = NULL;
-HWND hwndButtonMain04 = NULL;
-HWND hwndButtonMain05 = NULL;
+HWND hwndButtonMain04 = NULL; //free
+HWND hwndButtonMain05 = NULL; //free
 HWND hwndButtonMain06 = NULL;
 HWND hwndEditMain01 = NULL;
-HWND hwndEditMain02 = NULL;
+HWND hwndEditMain02 = NULL; //free
 HWND hwndEditMain03 = NULL;
-HWND hwndEditMain04 = NULL;
-HWND hwndEditMain05 = NULL;
-HWND hwndEditMain06 = NULL;
+HWND hwndEditMain04 = NULL; //free
+HWND hwndEditMain05 = NULL; //free
+HWND hwndEditMain06 = NULL; //free
 HWND hwndListMain01 = NULL;
 HWND hwndListMain02 = NULL;
 
@@ -132,15 +132,14 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		case ID_LIST02_MAIN:
 			if (((NMHDR*)lParam)->code == NM_RCLICK)
 			{
-				HMENU hPopupMenu = CreatePopupMenu();
 				POINT p;
 				if (GetCursorPos(&p))
 				{
-					//cursor position now in p.x and p.y
+					HMENU hPopupMenu = CreatePopupMenu();
+					InsertMenu(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_MENU_LIST02_REFRESH, "Refresh");
+					SetForegroundWindow(hwndMain);
+					TrackPopupMenu(hPopupMenu, TPM_BOTTOMALIGN | TPM_LEFTALIGN, p.x, p.y, 0, hwndMain, NULL);
 				}
-				InsertMenu(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_MENU_LIST02_REFRESH, "Refresh");
-				SetForegroundWindow(hwndMain);
-				TrackPopupMenu(hPopupMenu, TPM_BOTTOMALIGN | TPM_LEFTALIGN, p.x, p.y, 0, hwndMain, NULL);
 			}
 			return 0;
 		}
