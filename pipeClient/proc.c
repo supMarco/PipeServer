@@ -1,7 +1,7 @@
 #pragma once
 #include "includes.h"
 
-void getProcesses(struct WIN_PROCESS *procarr)
+void get_processes(struct WIN_PROCESS *procarr)
 {
 	HANDLE hProcess = NULL;
 	PROCESSENTRY32 processEntry;

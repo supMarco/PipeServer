@@ -56,11 +56,12 @@ WORD dllMachine = NULL;
 HANDLE hProcess = NULL;
 HANDLE hPipe = NULL;
 
+BYTE errorMessage00[] = "Attach to a process first";
 BYTE errorMessage01[] = "failed injecting the DLL";
 BYTE errorMessage02[] = "failed executing the function";
 BYTE errorMessage03[] = "unknown error during injection";
 BYTE errorMessage04[] = "failed starting the server";
-BYTE successMessage01[] = "DLL injected";
+BYTE successMessage00[] = "DLL injected";
 
 int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nCmdShow)
 {
@@ -203,8 +204,11 @@ void on_button01_click()
 	BYTE * dllBuffer = NULL;
 	BYTE * exeBuffer = NULL;
 
-	if (!(hProcess = get_process_handle_by_name(exeName)))
+	if (!hProcess)
+	{
+		MessageBox(hwndMain, errorMessage00, dllPath, MB_ICONERROR | MB_OK);
 		return;
+	}
 
 	if (!load_file(dllPath, &dllBuffer))
 		return;
@@ -229,7 +233,7 @@ void on_button01_click()
 		free(dllBuffer);
 		return;
 	}
-	numberOfExportedFunctions = get_exported_functions_x64_x86(dllBuffer, serverExportedFunctions, dllMachine);
+	numberOfExportedFunctions = get_exported_functions(dllBuffer, serverExportedFunctions, dllMachine);
 
 	for (unsigned int i = 0; i < numberOfExportedFunctions && serverExportedFunctions[i]; i++)
 	{
@@ -352,7 +356,7 @@ void on_menuitem_refresh_click()
 	ZeroMemory(procarr, sizeof(struct WIN_PROCESS) * PROC_DEFAULT);
 	ListView_DeleteAllItems(hwndListMain02);
 
-	getProcesses(procarr);
+	get_processes(procarr);
 
 	for (int i = 0; procarr[i].pid | !i; i++)
 	{
@@ -672,7 +676,7 @@ BOOL inject_and_start_server(BYTE * functiontocall)
 			MessageBox(hwndMain, errorMessage02, dllPath, MB_ICONERROR | MB_OK);
 			break;
 		default:
-			MessageBox(hwndMain, successMessage01, dllPath, MB_ICONINFORMATION | MB_OK);
+			MessageBox(hwndMain, successMessage00, dllPath, MB_ICONINFORMATION | MB_OK);
 			outcome = TRUE;
 			break;
 		}

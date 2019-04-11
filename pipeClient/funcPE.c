@@ -2,7 +2,7 @@
 #include "includes.h"
 
 
-WORD get_machine_type(BYTE * pe)
+WORD get_machine_type(BYTE *pe)
 {
 	IMAGE_DOS_HEADER * idh = (IMAGE_DOS_HEADER*)pe;
 	if (idh->e_magic == IMAGE_DOS_SIGNATURE)
@@ -17,8 +17,22 @@ WORD get_machine_type(BYTE * pe)
 	return -1;
 }
 
+DWORD get_time_date_stamp(BYTE *pe)
+{
+	IMAGE_DOS_HEADER * idh = (IMAGE_DOS_HEADER *)pe;
+	if (idh->e_magic == IMAGE_DOS_SIGNATURE)
+	{
+		IMAGE_NT_HEADERS * inh = (IMAGE_NT_HEADERS *)(pe + idh->e_lfanew);
+		if (inh->Signature == IMAGE_NT_SIGNATURE)
+		{
+			IMAGE_FILE_HEADER ifh = inh->FileHeader;
+			return ifh.TimeDateStamp;
+		}
+	}
+	return -1;
+}
 
-DWORD get_exported_functions_x64_x86(BYTE * dll, BYTE ** names, WORD machine)
+DWORD get_exported_functions(BYTE *dll, BYTE **names, WORD machine)
 {
 #ifdef BUILD64
 	DWORD64 name = NULL;
@@ -54,13 +68,13 @@ DWORD get_exported_functions_x64_x86(BYTE * dll, BYTE ** names, WORD machine)
 			else
 				image_data_directory = (image_nt_headers32->OptionalHeader).DataDirectory[0]; //Export symbols
 
-			image_export_directory = (IMAGE_EXPORT_DIRECTORY*)(dll + rva_to_file_offset_x64_x86(dll, image_data_directory.VirtualAddress, machine));
+			image_export_directory = (IMAGE_EXPORT_DIRECTORY*)(dll + rva_to_file_offset(dll, image_data_directory.VirtualAddress, machine));
 
 			for (unsigned int i = 0; i < image_export_directory->NumberOfNames; i++)
 			{
 #ifdef BUILD64
-				name = (DWORD64)(dll + rva_to_file_offset_x64_x86(dll, (image_export_directory->AddressOfNames) + sizeof(DWORD) * i, machine)); //Name RVA
-				name = (DWORD64)(dll + rva_to_file_offset_x64_x86(dll, *(DWORD *)name, machine)); //Name
+				name = (DWORD64)(dll + rva_to_file_offset(dll, (image_export_directory->AddressOfNames) + sizeof(DWORD) * i, machine)); //Name RVA
+				name = (DWORD64)(dll + rva_to_file_offset(dll, *(DWORD *)name, machine)); //Name
 #else
 				name = (DWORD)(dll + rva_to_file_offset_x64_x86(dll, (image_export_directory->AddressOfNames) + sizeof(DWORD) * i, machine)); //Name RVA
 				name = (DWORD)(dll + rva_to_file_offset_x64_x86(dll, *(DWORD *)name, machine)); //Name
@@ -75,7 +89,7 @@ DWORD get_exported_functions_x64_x86(BYTE * dll, BYTE ** names, WORD machine)
 
 }
 
-DWORD rva_to_file_offset_x64_x86(BYTE * dll, DWORD rva, WORD machine)
+DWORD rva_to_file_offset(BYTE *dll, DWORD rva, WORD machine)
 {
 	DWORD signature = NULL;
 	DWORD sections = NULL;

@@ -1,8 +1,6 @@
 #pragma once
 #include "includes.h"
 
-BOOL stopscan = FALSE;
-
 BOOL load_file(BYTE * filepath, BYTE ** buffer)
 {
 	DWORD bytesRead = NULL;
@@ -14,7 +12,6 @@ BOOL load_file(BYTE * filepath, BYTE ** buffer)
 		CloseHandle(hFile);
 	}
 	return bytesRead;
-
 }
 
 #ifdef BUILD64
