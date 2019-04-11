@@ -1,11 +1,8 @@
 #pragma once
 #include "includes.h"
 
-BOOL stopscan;
-
-HANDLE get_process_handle_by_name(BYTE *);
-BOOL load_file(BYTE *, BYTE **);
+BOOL load_file(BYTE *filepath, BYTE **buffer);
 #ifdef BUILD64
-void dword_to_aob_64(DWORD64, BYTE *);
+void dword_to_aob_64(DWORD64 dword, BYTE *bytes);
 #endif
-void dword_to_aob_32(DWORD, BYTE *);
+void dword_to_aob_32(DWORD dword, BYTE *bytes);

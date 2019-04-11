@@ -56,11 +56,13 @@ WORD dllMachine = NULL;
 HANDLE hProcess = NULL;
 HANDLE hPipe = NULL;
 
-BYTE errorMessage00[] = "Attach to a process first";
+BYTE errorMessage00[] = "attach to a process first";
 BYTE errorMessage01[] = "failed injecting the DLL";
 BYTE errorMessage02[] = "failed executing the function";
 BYTE errorMessage03[] = "unknown error during injection";
 BYTE errorMessage04[] = "failed starting the server";
+BYTE errorMessage05[] = "unable to attach";
+
 BYTE successMessage00[] = "DLL injected";
 
 int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nCmdShow)
@@ -314,16 +316,12 @@ void on_button03_click()
 
 void on_button04_click()
 {
-
+	//free
 }
 
 void on_button05_click()
 {
-	if (!stopscan)
-	{
-		stopscan = TRUE;
-		EnableWindow(hwndButtonMain05, FALSE);
-	}
+	//free
 }
 
 void on_button06_click()
@@ -335,12 +333,13 @@ void on_button06_click()
 
 	if (hProcess)
 	{
-		MessageBox(hwndMain, "Already attached", "Error", MB_ICONINFORMATION | MB_OK);
-		return;
+		CloseHandle(hProcess);
+		hProcess = NULL;
 	}
+
 	if (!(hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, _strtoi64(pid, NULL, 10))))
 	{
-		MessageBox(hwndMain, "Unable to attach", "Error", MB_ICONERROR | MB_OK);
+		MessageBox(hwndMain, errorMessage05, "Error", MB_ICONERROR | MB_OK);
 		return;
 	}
 }

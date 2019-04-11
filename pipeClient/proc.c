@@ -21,7 +21,7 @@ void get_processes(struct WIN_PROCESS *procarr)
 	CloseHandle(hSnapshot);
 }
 
-HANDLE get_process_handle_by_name(BYTE * processname)
+HANDLE get_process_handle_by_name(BYTE *processname)
 {
 	HANDLE hProcess = NULL;
 	PROCESSENTRY32 processEntry;
