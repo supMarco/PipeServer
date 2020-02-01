@@ -2,8 +2,7 @@
 *.db
 *.opendb
 *.ipch
-pipeClient/.vs/pipeClient/v15/.suo
-pipeServer/.vs/pipeServer/v15/.suo
+*.suo
 *.obj
 *.exe
 *.ilk

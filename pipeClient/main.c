@@ -2,26 +2,27 @@
 
 LRESULT CALLBACK WindowProc(HWND, UINT, WPARAM, LPARAM);
 
-void on_window_create(HWND);
-void on_button01_click();
-void on_button02_click();
-void on_button03_click();
-void on_button04_click();
-void on_menuitem_refresh_click();
+void onWindowCreate(HWND);
+void onInjectButtonClick();
+void onCallButtonClick();
+void onOpenButtonClick();
+void onAttachButtonClick();
+void onProcessesListViewRightClick();
+void onMenuItemRefreshClick();
 
 HWND hwndMain = NULL;
-HWND hwndStaticMain01 = NULL;
-HWND hwndStaticMain02 = NULL;
-HWND hwndStaticMain03 = NULL;
+HWND hwndFunctionsStaticMain = NULL;
+HWND hwndProcessesStaticMain = NULL;
+HWND hwndPathStaticMain = NULL;
 HWND hwndStaticMain04 = NULL;
-HWND hwndButtonMain01 = NULL;
-HWND hwndButtonMain02 = NULL;
-HWND hwndButtonMain03 = NULL;
-HWND hwndButtonMain04 = NULL;
-HWND hwndEditMain01 = NULL;
-HWND hwndEditMain02 = NULL;
-HWND hwndListMain01 = NULL;
-HWND hwndListMain02 = NULL;
+HWND hwndInjectButtonMain = NULL;
+HWND hwndCallButtonMain = NULL;
+HWND hwndOpenButtonMain = NULL;
+HWND hwndAttachButtonMain = NULL;
+HWND hwndPathEditMain = NULL;
+HWND hwndArgumentEditMain = NULL;
+HWND hwndFunctionsListMain = NULL;
+HWND hwndProcessesListMain = NULL;
 
 HFONT hFont = NULL;
 
@@ -30,11 +31,11 @@ BYTE exePath[STR_SIZE] = { 0 };
 BYTE exeName[STR_SIZE] = { 0 };
 BYTE serverLocationStr[STR_SIZE] = "Pipe Client - Connected to server - Server Location: ";
 
-struct WIN_PROCESS procarr[PROC_DEFAULT] = { 0 };
+struct WIN_PROCESS processes[PROC_DEFAULT] = { 0 };
 
 BOOL initSuccess = FALSE;
 #ifdef BUILD64
-DWORD64 serverLocation = FALSE;
+DWORD64 serverLocation = 0;
 DWORD64 bytesWritten = NULL;
 DWORD64 bytesRead = NULL;
 #else
@@ -54,17 +55,17 @@ BYTE errorMessage02[] = "failed executing the function";
 BYTE errorMessage03[] = "unknown error during injection";
 BYTE errorMessage04[] = "failed starting the server";
 BYTE errorMessage05[] = "unable to attach";
-
 BYTE successMessage00[] = "DLL injected";
 
 int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nCmdShow)
 {
 	BYTE className[] = "mainWindowClass";
+	BYTE formName[] = "Pipe Client - Disconnected from server";
 	MSG msg;
 
 	WNDCLASS wndClass = { 0 };
 	wndClass.hInstance = hInst;
-	wndClass.lpszClassName = className;
+	wndClass.lpszClassName = (LPCSTR)className;
 	wndClass.lpfnWndProc = WindowProc;
 	wndClass.hbrBackground = (HBRUSH)GetSysColorBrush(COLOR_3DFACE);
 	wndClass.style = CS_HREDRAW | CS_VREDRAW;
@@ -72,22 +73,8 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nC
 
 	RegisterClass(&wndClass);
 
-	/*
-	[CreateWindow]:
-	lpClassName
-	lpWindowName
-	dwStyle
-	x
-	y
-	nWidth
-	nHeight
-	hWndParent
-	hMenu
-	hInstance
-	lpParam
-	*/
-
-	hwndMain = CreateWindow(className, "Pipe Client - Disconnected from server", WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX, CW_USEDEFAULT, CW_USEDEFAULT, 1000, 380, NULL, NULL, hInst, NULL);
+	//[CreateWindow]: lpClassName, lpWindowName, dwStyle, x, y, nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam
+	hwndMain = CreateWindow((LPCSTR)className, (LPCSTR)formName, WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX, CW_USEDEFAULT, CW_USEDEFAULT, 1000, 380, NULL, NULL, hInst, NULL);
 
 	if (hwndMain)
 	{
@@ -106,7 +93,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	switch (uMsg)
 	{
 	case WM_CREATE:
-		on_window_create(hwnd);
+		onWindowCreate(hwnd);
 		return 0;
 	case WM_DESTROY:
 		PostQuitMessage(0);
@@ -114,37 +101,30 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	case WM_COMMAND:
 		switch (LOWORD(wParam))
 		{
-		case ID_BUTTON01_MAIN:
-			on_button01_click();
+		case ID_INJECT_BUTTON_MAIN:
+			onInjectButtonClick();
 			return 0;
-		case ID_BUTTON02_MAIN:
-			on_button02_click();
+		case ID_CALL_BUTTON_MAIN:
+			onCallButtonClick();
 			return 0;
-		case ID_BUTTON03_MAIN:
-			on_button03_click();
+		case ID_OPEN_BUTTON_MAIN:
+			onOpenButtonClick();
 			return 0;
-		case ID_BUTTON04_MAIN:
-			on_button04_click();
+		case ID_ATTACH_BUTTON_MAIN:
+			onAttachButtonClick();
 			return 0;
 		case ID_MENU_LIST02_REFRESH:
-			on_menuitem_refresh_click();
+			onMenuItemRefreshClick();
 			return 0;
 		}
 		return 0;
 	case WM_NOTIFY:
 		switch (wParam)
 		{
-		case ID_LIST02_MAIN:
+		case ID_PROCESSES_LIST_MAIN:
 			if (((NMHDR*)lParam)->code == NM_RCLICK)
 			{
-				POINT p;
-				if (GetCursorPos(&p))
-				{
-					HMENU hPopupMenu = CreatePopupMenu();
-					InsertMenu(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_MENU_LIST02_REFRESH, "Refresh");
-					SetForegroundWindow(hwndMain);
-					TrackPopupMenu(hPopupMenu, TPM_BOTTOMALIGN | TPM_LEFTALIGN, p.x, p.y, 0, hwndMain, NULL);
-				}
+				onProcessesListViewRightClick();
 			}
 			return 0;
 		}
@@ -154,49 +134,35 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 
 
-void on_window_create(HWND hwnd)
+void onWindowCreate(HWND hwnd)
 {
-	/*
-	[CreateWindow]:
-	lpClassName
-	lpWindowName
-	dwStyle
-	x
-	y
-	nWidth
-	nHeight
-	hWndParent
-	hMenu
-	hInstance
-	lpParam
-	*/
-	hwndButtonMain01 = CreateWindow("Button", "Inject and connect", WS_CHILD | WS_VISIBLE, 300, 30, 150, 25, hwnd, (HMENU)ID_BUTTON01_MAIN, NULL, NULL);
-	hwndButtonMain02 = CreateWindow("Button", "Call function", WS_CHILD | WS_VISIBLE, 300, 290, 280, 25, hwnd, (HMENU)ID_BUTTON02_MAIN, NULL, NULL);
-	hwndButtonMain03 = CreateWindow("Button", "...", WS_CHILD | WS_VISIBLE, 935, 30, 30, 25, hwnd, (HMENU)ID_BUTTON03_MAIN, NULL, NULL);
-	hwndButtonMain04 = CreateWindow("Button", "Attach", WS_CHILD | WS_VISIBLE, 10, 290, 280, 25, hwnd, (HMENU)ID_BUTTON04_MAIN, NULL, NULL);
-	hwndStaticMain01 = CreateWindow("Static", "Functions exported by the server", WS_CHILD | WS_VISIBLE | SS_LEFT, 300, 70, 300, 20, hwnd, (HMENU)ID_LABEL01_MAIN, NULL, NULL);
-	hwndStaticMain02 = CreateWindow("Static", "Process list", WS_CHILD | WS_VISIBLE | SS_LEFT, 10, 10, 300, 20, hwnd, (HMENU)ID_LABEL02_MAIN, NULL, NULL);
-	hwndStaticMain03 = CreateWindow("Static", "DLL Path", WS_CHILD | WS_VISIBLE | SS_LEFT, 495, 10, 100, 20, hwnd, (HMENU)ID_LABEL03_MAIN, NULL, NULL);
-	hwndStaticMain04 = CreateWindow("Static", "", WS_CHILD | WS_VISIBLE | SS_LEFT, 395, 90, 300, 20, hwnd, (HMENU)ID_LABEL04_MAIN, NULL, NULL);
-	hwndEditMain01 = CreateWindow("Edit", "", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_READONLY | ES_AUTOHSCROLL, 460, 30, 470, 25, hwnd, (HMENU)ID_EDIT01_MAIN, NULL, NULL);
-	hwndEditMain02 = CreateWindow("Edit", "Argument #1", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL, 300, 260, 280, 25, hwnd, (HMENU)ID_EDIT02_MAIN, NULL, NULL);
-	hwndListMain01 = CreateWindow("ListBox", NULL, WS_CHILD | WS_VISIBLE | WS_BORDER | LBS_NOTIFY | LBS_DISABLENOSCROLL | LBS_STANDARD, 300, 90, 280, 165, hwnd, (HMENU)ID_LIST01_MAIN, NULL, NULL);
-	hwndListMain02 = CreateWindow("SysListView32", NULL, WS_CHILD | WS_VISIBLE | WS_BORDER | LVS_REPORT, 10, 30, 280, 255, hwnd, (HMENU)ID_LIST02_MAIN, NULL, NULL);
+	//[CreateWindow]: lpClassName, lpWindowName, dwStyle, x, y, nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam
+	hwndInjectButtonMain = CreateWindow("Button", "Inject and connect", WS_CHILD | WS_VISIBLE, 300, 30, 150, 25, hwnd, (HMENU)ID_INJECT_BUTTON_MAIN, NULL, NULL);
+	hwndCallButtonMain = CreateWindow("Button", "Call function", WS_CHILD | WS_VISIBLE, 300, 290, 665, 25, hwnd, (HMENU)ID_CALL_BUTTON_MAIN, NULL, NULL);
+	hwndOpenButtonMain = CreateWindow("Button", "...", WS_CHILD | WS_VISIBLE, 935, 30, 30, 25, hwnd, (HMENU)ID_OPEN_BUTTON_MAIN, NULL, NULL);
+	hwndAttachButtonMain = CreateWindow("Button", "Attach", WS_CHILD | WS_VISIBLE, 10, 290, 280, 25, hwnd, (HMENU)ID_ATTACH_BUTTON_MAIN, NULL, NULL);
+	hwndFunctionsStaticMain = CreateWindow("Static", "Functions exported by the server", WS_CHILD | WS_VISIBLE | SS_LEFT, 300, 70, 300, 20, hwnd, (HMENU)ID_FUNCTIONS_STATIC_MAIN, NULL, NULL);
+	hwndProcessesStaticMain = CreateWindow("Static", "Processes", WS_CHILD | WS_VISIBLE | SS_LEFT, 10, 10, 300, 20, hwnd, (HMENU)ID_PROCESSES_STATIC_MAIN, NULL, NULL);
+	hwndPathStaticMain = CreateWindow("Static", "Server path (.DLL)", WS_CHILD | WS_VISIBLE | SS_LEFT, 495, 10, 150, 20, hwnd, (HMENU)ID_PATH_STATIC_MAIN, NULL, NULL);
+	hwndPathEditMain = CreateWindow("Edit", "", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_READONLY | ES_AUTOHSCROLL, 460, 30, 470, 25, hwnd, (HMENU)ID_PATH_EDIT_MAIN, NULL, NULL);
+	hwndArgumentEditMain = CreateWindow("Edit", "Argument #1", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL, 300, 260, 665, 25, hwnd, (HMENU)ID_ARGUMENT_EDIT_MAIN, NULL, NULL);
+	hwndFunctionsListMain = CreateWindow("ListBox", NULL, WS_CHILD | WS_VISIBLE | WS_BORDER | LBS_NOTIFY | LBS_DISABLENOSCROLL | LBS_STANDARD, 300, 90, 665, 165, hwnd, (HMENU)ID_FUNCTIONS_LIST_MAIN, NULL, NULL);
+	hwndProcessesListMain = CreateWindow("SysListView32", NULL, WS_CHILD | WS_VISIBLE | WS_BORDER | LVS_REPORT, 10, 30, 280, 255, hwnd, (HMENU)ID_PROCESSES_LIST_MAIN, NULL, NULL);
 
 	//Set font
 	hFont = CreateFont(19, 0, 0, 0, FW_DONTCARE, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_OUTLINE_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, VARIABLE_PITCH, TEXT("Segoe UI"));
-	SendMessage(hwndButtonMain01, WM_SETFONT, (WPARAM)hFont, (LPARAM)0);
-	SendMessage(hwndButtonMain02, WM_SETFONT, (WPARAM)hFont, (LPARAM)0);
-	SendMessage(hwndButtonMain03, WM_SETFONT, (WPARAM)hFont, (LPARAM)0);
-	SendMessage(hwndButtonMain04, WM_SETFONT, (WPARAM)hFont, (LPARAM)0);
-	SendMessage(hwndEditMain01, WM_SETFONT, (WPARAM)hFont, (LPARAM)0);
-	SendMessage(hwndEditMain02, WM_SETFONT, (WPARAM)hFont, (LPARAM)0);
-	SendMessage(hwndStaticMain01, WM_SETFONT, (WPARAM)hFont, (LPARAM)0);
-	SendMessage(hwndStaticMain02, WM_SETFONT, (WPARAM)hFont, (LPARAM)0);
-	SendMessage(hwndStaticMain03, WM_SETFONT, (WPARAM)hFont, (LPARAM)0);
+	SendMessage(hwndInjectButtonMain, WM_SETFONT, (WPARAM)hFont, (LPARAM)0);
+	SendMessage(hwndCallButtonMain, WM_SETFONT, (WPARAM)hFont, (LPARAM)0);
+	SendMessage(hwndOpenButtonMain, WM_SETFONT, (WPARAM)hFont, (LPARAM)0);
+	SendMessage(hwndAttachButtonMain, WM_SETFONT, (WPARAM)hFont, (LPARAM)0);
+	SendMessage(hwndPathEditMain, WM_SETFONT, (WPARAM)hFont, (LPARAM)0);
+	SendMessage(hwndArgumentEditMain, WM_SETFONT, (WPARAM)hFont, (LPARAM)0);
+	SendMessage(hwndFunctionsStaticMain, WM_SETFONT, (WPARAM)hFont, (LPARAM)0);
+	SendMessage(hwndProcessesStaticMain, WM_SETFONT, (WPARAM)hFont, (LPARAM)0);
+	SendMessage(hwndPathStaticMain, WM_SETFONT, (WPARAM)hFont, (LPARAM)0);
 	SendMessage(hwndStaticMain04, WM_SETFONT, (WPARAM)hFont, (LPARAM)0);
-	SendMessage(hwndListMain01, WM_SETFONT, (WPARAM)hFont, (LPARAM)0);
-	SendMessage(hwndListMain02, WM_SETFONT, (WPARAM)hFont, (LPARAM)0);
+	SendMessage(hwndFunctionsListMain, WM_SETFONT, (WPARAM)hFont, (LPARAM)0);
+	SendMessage(hwndProcessesListMain, WM_SETFONT, (WPARAM)hFont, (LPARAM)0);
 
 	//Init Lists
 	LVCOLUMN lvc;
@@ -205,17 +171,20 @@ void on_window_create(HWND hwnd)
 	lvc.pszText = "PID";
 	lvc.cx = 70;
 	//lvc.fmt = LVCFMT_LEFT;
-	ListView_InsertColumn(hwndListMain02, 0, &lvc);
+	ListView_InsertColumn(hwndProcessesListMain, 0, &lvc);
 	lvc.iSubItem = 0;
 	lvc.pszText = "Name";
 	lvc.cx = 210;
-	ListView_InsertColumn(hwndListMain02, 0, &lvc);
+	ListView_InsertColumn(hwndProcessesListMain, 0, &lvc);
+
+	//Highlight full row
+	ListView_SetExtendedListViewStyle(hwndProcessesListMain, LVS_EX_FULLROWSELECT);
 
 	//Refresh process list
-	on_menuitem_refresh_click();
+	onMenuItemRefreshClick();
 }
 
-void on_button01_click()
+void onInjectButtonClick()
 {
 
 #ifdef BUILD64
@@ -224,7 +193,7 @@ void on_button01_click()
 	DWORD numberOfExportedFunctions = NULL;
 #endif
 	DWORD starterIndex = NULL;
-	BYTE * serverExportedFunctions[STR_SIZE] = { NULL };
+	BYTE * serverExportedFunctions[STR_SIZE] = { 0 };
 	BYTE * dllBuffer = NULL;
 	BYTE * exeBuffer = NULL;
 
@@ -262,12 +231,12 @@ void on_button01_click()
 	for (unsigned int i = 0; i < numberOfExportedFunctions && serverExportedFunctions[i]; i++)
 	{
 		if (strstr((char const *)serverExportedFunctions[i], (const char *)PIPE_SERVER_STARTER)) starterIndex = i;
-		SendMessage(hwndListMain01, LB_ADDSTRING, NULL, (LPARAM)serverExportedFunctions[i]);
+		SendMessage(hwndFunctionsListMain, LB_ADDSTRING, NULL, (LPARAM)serverExportedFunctions[i]);
 	}
 	free(exeBuffer);
 	free(dllBuffer);
 
-	if (!inject_and_start_server(serverExportedFunctions[starterIndex]))
+	if (!injectAndRunServer(serverExportedFunctions[starterIndex]))
 	{
 		MessageBox(hwndMain, errorMessage03, "Error", MB_ICONERROR | MB_OK);
 		return;
@@ -276,27 +245,27 @@ void on_button01_click()
 	if ((hPipe = CreateFile(TEXT(PIPE_NAME), GENERIC_READ | GENERIC_WRITE, NULL, NULL, OPEN_EXISTING, NULL, NULL)) == INVALID_HANDLE_VALUE)
 	{
 		MessageBox(hwndMain, errorMessage04, "Error", MB_ICONERROR | MB_OK);
-		SendMessage(hwndListMain01, LB_RESETCONTENT, NULL, NULL);
+		SendMessage(hwndFunctionsListMain, LB_RESETCONTENT, NULL, NULL);
 		return;
 	}
 
 	SetWindowText(hwndMain, "Pipe Client - Connected to server");
-	EnableWindow(hwndButtonMain01, FALSE);
+	EnableWindow(hwndInjectButtonMain, FALSE);
 }
 
-void on_button02_click()
+void onCallButtonClick()
 {
 	DWORD selFunctionIndex = NULL;
 	DWORD selFunctionLen = NULL;
 	BYTE selFunction[STR_SIZE] = { 0 };
 	BYTE message[STR_SIZE] = { 0 };
 
-	if ((selFunctionIndex = SendMessage(hwndListMain01, LB_GETCURSEL, NULL, NULL)) == LB_ERR) return;
-	selFunctionLen = SendMessage(hwndListMain01, LB_GETTEXTLEN, (WPARAM)selFunctionIndex, NULL);
-	SendMessage(hwndListMain01, LB_GETTEXT, selFunctionIndex, (LPARAM)selFunction);
+	if ((selFunctionIndex = SendMessage(hwndFunctionsListMain, LB_GETCURSEL, NULL, NULL)) == LB_ERR) return;
+	selFunctionLen = SendMessage(hwndFunctionsListMain, LB_GETTEXTLEN, (WPARAM)selFunctionIndex, NULL);
+	SendMessage(hwndFunctionsListMain, LB_GETTEXT, selFunctionIndex, (LPARAM)selFunction);
 	if (!initSuccess)
 	{
-		if (strstr((char * const)selFunction, (const char *)"init"))
+		if (strstr((char * const)selFunction, (const char *)PIPE_SERVER_INIT))
 		{
 			WriteFile(hPipe, selFunction, STR_SIZE - 1, (LPDWORD)&bytesWritten, NULL);
 			ReadFile(hPipe, &serverLocation, sizeof(DWORD64), (LPDWORD)&bytesRead, NULL); //Fetch info from the server (server location in the target)
@@ -311,9 +280,9 @@ void on_button02_click()
 	}
 	else
 	{
-		if (strstr((char * const)selFunction, (const char *)"pipe_message_box"))
+		if (strstr((char * const)selFunction, (const char *)PIPE_SERVER_MB))
 		{
-			GetWindowText(hwndEditMain02, message, STR_SIZE - 1);
+			GetWindowText(hwndArgumentEditMain, message, STR_SIZE - 1);
 			WriteFile(hPipe, selFunction, STR_SIZE - 1, (LPDWORD)&bytesWritten, NULL);
 			WriteFile(hPipe, message, STR_SIZE - 1, (LPDWORD)&bytesWritten, NULL); //Sends the message to spawn to the server
 			return;
@@ -321,7 +290,7 @@ void on_button02_click()
 	}
 }
 
-void on_button03_click()
+void onOpenButtonClick()
 {
 	OPENFILENAMEA ofna = { 0 };
 	ofna.lStructSize = sizeof(OPENFILENAMEA);
@@ -331,59 +300,75 @@ void on_button03_click()
 	ofna.nFilterIndex = 1;
 	ofna.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
 
-	if (!GetOpenFileNameA(&ofna))
-		return;
-	SetWindowText(hwndEditMain01, dllPath);
-}
-
-void on_button04_click()
-{
-	BYTE pid[STR_SIZE];
-
-	ListView_GetItemText(hwndListMain02, ListView_GetNextItem(hwndListMain02, -1, LVNI_SELECTED), 0, exeName, STR_SIZE);
-	ListView_GetItemText(hwndListMain02, ListView_GetNextItem(hwndListMain02, -1, LVNI_SELECTED), 1, pid, STR_SIZE);
-
-	if (hProcess)
+	if (GetOpenFileNameA(&ofna))
 	{
-		CloseHandle(hProcess);
-		hProcess = NULL;
-	}
-
-	if (!(hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, _strtoi64(pid, NULL, 10))))
-	{
-		MessageBox(hwndMain, errorMessage05, "Error", MB_ICONERROR | MB_OK);
-		return;
+		SetWindowText(hwndPathEditMain, dllPath);
 	}
 }
 
-void on_menuitem_refresh_click()
+void onAttachButtonClick()
 {
-	LVITEM lvi;
-	DWORD currPos = ListView_GetNextItem(hwndListMain02, -1, LVNI_SELECTED);
+	char* pid = NULL;
+
+	if ((pid = (char*)calloc(STR_SIZE, 1)))
+	{
+		ListView_GetItemText(hwndProcessesListMain, ListView_GetNextItem(hwndProcessesListMain, -1, LVNI_SELECTED), 0, exeName, STR_SIZE);
+		ListView_GetItemText(hwndProcessesListMain, ListView_GetNextItem(hwndProcessesListMain, -1, LVNI_SELECTED), 1, pid, STR_SIZE);
+
+		if (hProcess)
+		{
+			CloseHandle(hProcess);
+			hProcess = NULL;
+		}
+
+		if (!((hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, _strtoi64(pid, NULL, 10)))))
+		{
+			MessageBox(hwndMain, errorMessage05, "Error", MB_ICONERROR | MB_OK);
+		}
+		free(pid);
+	}
+}
+
+void onProcessesListViewRightClick()
+{
+	POINT p = { 0 };
+	if (GetCursorPos(&p))
+	{
+		HMENU hPopupMenu = CreatePopupMenu();
+		InsertMenu(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_MENU_LIST02_REFRESH, "Refresh");
+		SetForegroundWindow(hwndMain);
+		TrackPopupMenu(hPopupMenu, TPM_BOTTOMALIGN | TPM_LEFTALIGN, p.x, p.y, 0, hwndMain, NULL);
+	}
+}
+
+void onMenuItemRefreshClick()
+{
+	LVITEM lvi = { 0 };
+	DWORD currPos = ListView_GetNextItem(hwndProcessesListMain, -1, LVNI_SELECTED);
 	BYTE pid[STR_SIZE] = { 0 };
 
 	lvi.mask = LVIF_TEXT;
 
-	ZeroMemory(procarr, sizeof(struct WIN_PROCESS) * PROC_DEFAULT);
-	ListView_DeleteAllItems(hwndListMain02);
+	ZeroMemory(processes, sizeof(struct WIN_PROCESS) * PROC_DEFAULT);
+	ListView_DeleteAllItems(hwndProcessesListMain);
 
-	get_processes(procarr);
+	get_processes(processes);
 
-	for (int i = 0; procarr[i].pid | !i; i++)
+	for (int i = 0; processes[i].pid | !i; i++)
 	{
 		lvi.iItem = i;
 		lvi.iSubItem = 0;
-		lvi.pszText = procarr[i].pname;
-		ListView_InsertItem(hwndListMain02, &lvi);
+		lvi.pszText = processes[i].pname;
+		ListView_InsertItem(hwndProcessesListMain, &lvi);
 		lvi.iSubItem = 1;
-		_itoa(procarr[i].pid, pid, 10);
+		_itoa(processes[i].pid, pid, 10);
 		lvi.pszText = pid;
-		ListView_SetItem(hwndListMain02, &lvi);
+		ListView_SetItem(hwndProcessesListMain, &lvi);
 	}
-	ListView_EnsureVisible(hwndListMain02, currPos, TRUE);
+	ListView_EnsureVisible(hwndProcessesListMain, currPos, TRUE);
 }
 
-BOOL inject_and_start_server(BYTE * functiontocall)
+BOOL injectAndRunServer(BYTE * functiontocall)
 {
 
 	BYTE injectBuffer[DEFAULT_ALLOCATION_SIZE] = { 0 };

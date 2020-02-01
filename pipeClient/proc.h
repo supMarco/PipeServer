@@ -8,5 +8,5 @@ struct WIN_PROCESS
 	char pname[STR_SIZE];
 };
 
-void get_processes(struct WIN_PROCESS *procarr);
+void get_processes(struct WIN_PROCESS *processes);
 HANDLE get_process_handle_by_name(BYTE *processname);

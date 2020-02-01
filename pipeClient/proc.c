@@ -1,7 +1,8 @@
 #pragma once
+
 #include "includes.h"
 
-void get_processes(struct WIN_PROCESS *procarr)
+void get_processes(struct WIN_PROCESS *processes)
 {
 	HANDLE hProcess = NULL;
 	PROCESSENTRY32 processEntry;
@@ -13,8 +14,8 @@ void get_processes(struct WIN_PROCESS *procarr)
 		int i = 0;
 		do
 		{
-			strcpy(procarr[i].pname, processEntry.szExeFile);
-			procarr[i].pid = processEntry.th32ProcessID;
+			strcpy(processes[i].pname, processEntry.szExeFile);
+			processes[i].pid = processEntry.th32ProcessID;
 			i++;
 		} while (Process32Next(hSnapshot, &processEntry));
 	}
